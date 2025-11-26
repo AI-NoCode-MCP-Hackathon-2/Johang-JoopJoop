@@ -249,19 +249,19 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
           const { data } = await api.get(`/analysis/${analysisId}`);
           const analysis = data.data.analysis;
 
-          console.log('분석 데이터 로드:', {
-            id: analysis.id,
-            file_name: analysis.file_name,
-            has_masked_text: !!analysis.masked_text,
-            masked_text_length: analysis.masked_text?.length || 0,
-            risks_count: analysis.analysis_result?.risks?.length || 0,
-          });
+          // console.log('분석 데이터 로드:', {
+          //   id: analysis.id,
+          //   file_name: analysis.file_name,
+          //   has_masked_text: !!analysis.masked_text,
+          //   masked_text_length: analysis.masked_text?.length || 0,
+          //   risks_count: analysis.analysis_result?.risks?.length || 0,
+          // });
 
           setLoadedAnalysisId(analysisId);
 
           // 마스킹된 텍스트 복원
           if (analysis.masked_text) {
-            console.log('maskedText 설정:', analysis.masked_text.substring(0, 100) + '...');
+            // console.log('maskedText 설정:', analysis.masked_text.substring(0, 100) + '...');
             setMaskedText(analysis.masked_text);
           } else {
             console.warn('masked_text가 없습니다. 레거시 데이터일 수 있습니다.');
@@ -318,8 +318,8 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
     if (file.type === 'application/pdf') {
       try {
         const text = await extractTextFromPDF(file);
-        console.log('PDF 텍스트 추출 완료:', text.substring(0, 200) + '...');
-        console.log('총 길이:', text.length, '문자');
+        // console.log('PDF 텍스트 추출 완료:', text.substring(0, 200) + '...');
+        // console.log('총 길이:', text.length, '문자');
         setContractText(text);
       } catch (error) {
         alert('PDF 파일을 읽는 중 오류가 발생했습니다.');
@@ -328,7 +328,7 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
     } else if (file.type === 'text/plain') {
       // TXT 파일인 경우
       const text = await file.text();
-      console.log('TXT 파일 읽기 완료:', text.substring(0, 200) + '...');
+      // console.log('TXT 파일 읽기 완료:', text.substring(0, 200) + '...');
       setContractText(text);
     }
   };
@@ -353,11 +353,11 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
       return;
     }
 
-    console.log('분석 버튼 클릭 - contractText 상태:', {
-      length: contractText.length,
-      isEmpty: !contractText.trim(),
-      preview: contractText.substring(0, 100)
-    });
+    // console.log('분석 버튼 클릭 - contractText 상태:', {
+    //   length: contractText.length,
+    //   isEmpty: !contractText.trim(),
+    //   preview: contractText.substring(0, 100)
+    // });
 
     if (!contractText.trim()) {
       alert("계약서 내용을 입력해주세요.");

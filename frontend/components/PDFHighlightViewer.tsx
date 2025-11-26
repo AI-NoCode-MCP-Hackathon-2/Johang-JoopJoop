@@ -24,7 +24,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
     if (!textLayerDiv || !clausesToHighlight || clausesToHighlight.length === 0) return;
 
     const spans = Array.from(textLayerDiv.querySelectorAll('span'));
-    console.log(`하이라이트 시작 - span 개수: ${spans.length}, 조항 개수: ${clausesToHighlight.length}`);
+    // console.log(`하이라이트 시작 - span 개수: ${spans.length}, 조항 개수: ${clausesToHighlight.length}`);
 
     // 1) 페이지 전체 문자열 + span 인덱스 테이블 만들기
     let pageTextNorm = '';
@@ -38,7 +38,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
       return { span, start, end };
     });
 
-    console.log('📏 페이지 전체 문자열 길이:', pageTextNorm.length);
+    // console.log('📏 페이지 전체 문자열 길이:', pageTextNorm.length);
 
     let matchCount = 0;
 
@@ -46,7 +46,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
     clausesToHighlight.forEach((clause, clauseIdx) => {
       const targetText = clause['조항'] || '';
       if (!targetText) {
-        console.log(`조항 #${clauseIdx + 1}: 텍스트 없음`);
+        // console.log(`조항 #${clauseIdx + 1}: 텍스트 없음`);
         return;
       }
 
@@ -62,11 +62,11 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
       }
 
       if (!highlightClass) {
-        console.log(`조항 #${clauseIdx + 1}: 알 수 없는 위험도 '${riskKey}'`);
+        // console.log(`조항 #${clauseIdx + 1}: 알 수 없는 위험도 '${riskKey}'`);
         return;
       }
 
-      console.log(`\n🎯 조항 #${clauseIdx + 1} (${riskKey}): ${targetText.slice(0, 80)}...`);
+      // console.log(`\n🎯 조항 #${clauseIdx + 1} (${riskKey}): ${targetText.slice(0, 80)}...`);
 
       // "제목: 내용" 형태면 콜론 뒤 내용만 사용
       let coreText = targetText;
@@ -76,14 +76,14 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
 
       const normalizedTarget = normalizeText(coreText);
       if (!normalizedTarget || normalizedTarget.length < 5) {
-        console.log('   ✗ 텍스트가 너무 짧아서 스킵');
+        // console.log('   ✗ 텍스트가 너무 짧아서 스킵');
         return;
       }
 
       // 3) 페이지 문자열에서 이 조항이 나오는 위치 찾기
       let pos = pageTextNorm.indexOf(normalizedTarget);
       if (pos === -1) {
-        console.log('   ✗ 매칭 실패 - 페이지 문자열에서 찾을 수 없음');
+        // console.log('   ✗ 매칭 실패 - 페이지 문자열에서 찾을 수 없음');
         return;
       }
 
@@ -91,7 +91,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
         const targetStart = pos;
         const targetEnd = pos + normalizedTarget.length;
 
-        console.log(`   ✓ 매칭 구간: [${targetStart}, ${targetEnd})`);
+        // console.log(`   ✓ 매칭 구간: [${targetStart}, ${targetEnd})`);
 
         // 4) 이 구간과 겹치는 span에만 하이라이트 적용
         spanInfos.forEach(info => {
@@ -107,7 +107,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
       }
     });
 
-    console.log(`\n하이라이트 완료: ${matchCount}/${clausesToHighlight.length}개 조항 매칭됨\n`);
+    // console.log(`\n하이라이트 완료: ${matchCount}/${clausesToHighlight.length}개 조항 매칭됨\n`);
   };
 
   useEffect(() => {
@@ -124,8 +124,8 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
           cMapPacked: true,
         }).promise;
 
-        console.log('사용 중인 분석 데이터:', clauses);
-        console.log('위험 조항 수:', clauses.length);
+        // console.log('사용 중인 분석 데이터:', clauses);
+        // console.log('위험 조항 수:', clauses.length);
 
         const viewer = containerRef.current;
         viewer.innerHTML = '';
@@ -170,7 +170,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
 
           await textLayer.promise;
 
-          console.log(`📄 페이지 ${pageNum} 텍스트 레이어 렌더 완료 → 하이라이트`);
+          // console.log(`📄 페이지 ${pageNum} 텍스트 레이어 렌더 완료 → 하이라이트`);
           highlightTextLayer(textLayerDiv, clauses);
         }
 
