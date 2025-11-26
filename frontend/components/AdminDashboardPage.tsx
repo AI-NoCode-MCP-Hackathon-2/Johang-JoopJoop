@@ -183,7 +183,7 @@ const AdminDashboardPage: React.FC = () => {
 
   return (
     <section className="py-24 bg-[#FDFCF8] min-h-screen">
-      <div className="container mx-auto px-6 lg:px-12 max-w-7xl space-y-10">
+      <div className="container mx-auto px-6 lg:px-12 max-w-[1800px] space-y-10">
 
         {/* Header */}
         <Reveal>

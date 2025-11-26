@@ -270,26 +270,50 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
           // analysis_result에서 조항 정보 추출 (모든 정보 포함)
           const analysisResult = analysis.analysis_result;
           if (analysisResult && analysisResult.risks) {
-            const convertedResults: ClauseResult[] = analysisResult.risks.map((risk: any, idx: number) => ({
-              id: `clause-${idx + 1}`,
-              title: risk.category || '조항',
-              originalText: risk.originalClause || risk.issue || '',
-              easyExplanation: risk.recommendation || '',
-              summaryBullets: risk.summary || [],
-              riskLevel: (risk.severity === 'high' ? 'RED' : risk.severity === 'medium' ? 'ORANGE' : 'YELLOW') as RiskLevel,
-              tags: [risk.category || '일반'],
-              isKeyClause: risk.severity === 'high' || risk.severity === 'medium',
-            }));
+            const convertedResults: ClauseResult[] = analysisResult.risks.map((risk: any, idx: number) => {
+              // summary를 배열로 변환 (문자열이면 배열로 감싸기)
+              let summaryArray: string[] = [];
+              if (risk.summary) {
+                if (Array.isArray(risk.summary)) {
+                  summaryArray = risk.summary;
+                } else if (typeof risk.summary === 'string') {
+                  summaryArray = [risk.summary];
+                }
+              }
+
+              return {
+                id: `clause-${idx + 1}`,
+                title: risk.category || '조항',
+                originalText: risk.originalClause || risk.issue || '',
+                easyExplanation: risk.recommendation || '',
+                summaryBullets: summaryArray,
+                riskLevel: (risk.severity === 'high' ? 'RED' : risk.severity === 'medium' ? 'ORANGE' : 'YELLOW') as RiskLevel,
+                tags: [risk.category || '일반'],
+                isKeyClause: risk.severity === 'high' || risk.severity === 'medium',
+              };
+            });
 
             // n8nClauses 데이터 복원
-            const n8nClauseData: N8nClauseData[] = analysisResult.risks.map((risk: any) => ({
-              clause: risk.originalClause || risk.issue || '',
-              name: risk.category || '',
-              rank: risk.rank || 0,
-              risk: risk.severity === 'high' ? 'RED' : risk.severity === 'medium' ? 'ORANGE' : 'YELLOW',
-              easyTranslation: risk.recommendation || '',
-              summary: risk.summary || [],
-            }));
+            const n8nClauseData: N8nClauseData[] = analysisResult.risks.map((risk: any) => {
+              // summary를 배열로 변환
+              let summaryArray: string[] = [];
+              if (risk.summary) {
+                if (Array.isArray(risk.summary)) {
+                  summaryArray = risk.summary;
+                } else if (typeof risk.summary === 'string') {
+                  summaryArray = [risk.summary];
+                }
+              }
+
+              return {
+                clause: risk.originalClause || risk.issue || '',
+                name: risk.category || '',
+                rank: risk.rank || 0,
+                risk: risk.severity === 'high' ? 'RED' : risk.severity === 'medium' ? 'ORANGE' : 'YELLOW',
+                easyTranslation: risk.recommendation || '',
+                summary: summaryArray,
+              };
+            });
 
             setN8nClauses(n8nClauseData);
             setResults(convertedResults);
@@ -811,15 +835,12 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
                             <span style={{ color: 'var(--muted)', fontSize: '12px' }}>#{idx + 1}</span>
                           </div>
                           <h4 style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: 'bold' }}>{clause.title || '조항 없음'}</h4>
-                          <p className="text-xs leading-relaxed" style={{ margin: '6px 0 8px', color: '#cbd5e1', fontSize: '13px', lineHeight: '1.4' }}>
-                            {clause.easyExplanation}
-                          </p>
                           {clause.summaryBullets && Array.isArray(clause.summaryBullets) && clause.summaryBullets.length > 0 && (
                             <ul className="space-y-1 mt-2">
                               {clause.summaryBullets.map((bullet: string, bulletIdx: number) => (
                                 <li key={bulletIdx} className="text-xs flex items-start gap-2" style={{ color: '#94a3b8' }}>
                                   <span style={{ color: color.border, flexShrink: 0 }}>•</span>
-                                  <span>{bullet}</span>
+                                  <span>{bullet.replace(/^쉽게\s*풀어쓴\s*해석\s*:\s*/i, '').replace(/^한\s*줄\s*요약\s*:\s*/i, '').trim()}</span>
                                 </li>
                               ))}
                             </ul>
@@ -836,48 +857,6 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
                   </div>
                 </aside>
               </div>
-
-              {/* Summary Section */}
-              {results.length > 0 && (
-                <div className="mt-16 pt-10 border-t border-slate-800">
-                  <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                    <FileText className="w-6 h-6 text-indigo-400" />
-                    분석 요약
-                  </h3>
-                  <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-6 border border-slate-700">
-                    <div className="space-y-4">
-                      {results.map((clause: ClauseResult) => (
-                        <div key={clause.id} className="border-l-4 pl-4" style={{
-                          borderColor: clause.riskLevel === 'RED' ? '#ef4444' :
-                                      clause.riskLevel === 'ORANGE' ? '#f97316' : '#eab308'
-                        }}>
-                          <div className="flex items-start gap-3 mb-2">
-                            <span className="text-xs font-bold px-2 py-1 rounded" style={{
-                              background: clause.riskLevel === 'RED' ? 'rgba(239,68,68,0.2)' :
-                                         clause.riskLevel === 'ORANGE' ? 'rgba(249,115,22,0.2)' : 'rgba(234,179,8,0.2)',
-                              color: clause.riskLevel === 'RED' ? '#ef4444' :
-                                    clause.riskLevel === 'ORANGE' ? '#f97316' : '#eab308'
-                            }}>
-                              {clause.riskLevel}
-                            </span>
-                            <h4 className="font-bold text-white flex-1">{clause.title}</h4>
-                          </div>
-                          {clause.summaryBullets && Array.isArray(clause.summaryBullets) && clause.summaryBullets.length > 0 && (
-                            <ul className="space-y-1 ml-2">
-                              {clause.summaryBullets.map((bullet: string, bulletIdx: number) => (
-                                <li key={bulletIdx} className="text-sm flex items-start gap-2 text-slate-300">
-                                  <span className="text-teal-400 mt-1">•</span>
-                                  <span>{bullet}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Recommended Docs Section */}
               <div className="mt-16 pt-10 border-t border-slate-800">
