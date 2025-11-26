@@ -66,7 +66,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
         return;
       }
 
-      // console.log(`\n🎯 조항 #${clauseIdx + 1} (${riskKey}): ${targetText.slice(0, 80)}...`);
+      // console.log(`\n조항 #${clauseIdx + 1} (${riskKey}): ${targetText.slice(0, 80)}...`);
 
       // "제목: 내용" 형태면 콜론 뒤 내용만 사용
       let coreText = targetText;

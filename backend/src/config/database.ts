@@ -19,10 +19,10 @@ const pool = mysql.createPool({
 export async function testConnection(): Promise<void> {
   try {
     const connection = await pool.getConnection();
-    console.log('✅ MySQL 데이터베이스 연결 성공');
+    console.log('MySQL 데이터베이스 연결 성공');
     connection.release();
   } catch (error) {
-    console.error('❌ MySQL 데이터베이스 연결 실패:', error);
+    console.error('MySQL 데이터베이스 연결 실패:', error);
     throw error;
   }
 }

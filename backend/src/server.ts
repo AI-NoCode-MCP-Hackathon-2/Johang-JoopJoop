@@ -99,7 +99,7 @@ async function startServer() {
     logger.info('데이터베이스 초기화 완료');
 
     app.listen(PORT, () => {
-      logger.info(`✅ 서버가 포트 ${PORT}에서 실행 중입니다`);
+      logger.info(`서버가 포트 ${PORT}에서 실행 중입니다`);
       logger.info(`   - 환경: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`   - Health Check: http://localhost:${PORT}/health`);
       logger.info(`   - API Base URL: http://localhost:${PORT}/api`);

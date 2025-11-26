@@ -13,7 +13,7 @@ export async function addMaskedTextColumn(): Promise<void> {
       database: process.env.DB_NAME,
     });
 
-    console.log('📦 masked_text 컬럼 추가 시작...');
+    console.log('[INFO] masked_text 컬럼 추가 시작...');
 
     // Check if column already exists
     const [columns] = await connection.query<any[]>(
@@ -32,14 +32,14 @@ export async function addMaskedTextColumn(): Promise<void> {
       ADD COLUMN masked_text TEXT AFTER file_name;
     `);
 
-    console.log('✅ masked_text 컬럼 추가 완료!');
+    console.log('[SUCCESS] masked_text 컬럼 추가 완료!');
     console.log('   - 위치: file_name 다음');
     console.log('   - 타입: TEXT');
     console.log('   - 용도: 마스킹된 계약서 텍스트 저장');
 
     await connection.end();
   } catch (error) {
-    console.error('❌ masked_text 컬럼 추가 실패:', error);
+    console.error('[ERROR] masked_text 컬럼 추가 실패:', error);
     throw error;
   }
 }

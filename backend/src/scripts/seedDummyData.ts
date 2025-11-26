@@ -37,10 +37,10 @@ async function seedDummyData(): Promise<void> {
            ON DUPLICATE KEY UPDATE name = name`,
           [user.id, user.name, user.email, hashedPassword, user.provider, Math.floor(Math.random() * 5) + 1]
         );
-        console.log(`  ✅ ${user.name} (${user.email})`);
+        console.log(`  [SUCCESS] ${user.name} (${user.email})`);
       } catch (err: any) {
         if (err.code === 'ER_DUP_ENTRY') {
-          console.log(`  ⚠️ ${user.email} 이미 존재`);
+          console.log(`  [WARN] ${user.email} 이미 존재`);
         } else {
           throw err;
         }
@@ -53,7 +53,7 @@ async function seedDummyData(): Promise<void> {
     );
 
     // 2. 분석 이력 생성
-    console.log('\n📊 분석 이력 데이터 생성 중...');
+    console.log('\n[INFO] 분석 이력 데이터 생성 중...');
     const riskLevels = ['low', 'medium', 'high'];
     const contractTitles = [
       '2024년 정규직 근로계약서',
@@ -121,7 +121,7 @@ async function seedDummyData(): Promise<void> {
             daysAgo,
           ]
         );
-        console.log(`  ✅ ${title} (${riskLevel}) - ${user.name}`);
+        console.log(`  [SUCCESS] ${title} (${riskLevel}) - ${user.name}`);
       }
     }
 
@@ -192,10 +192,10 @@ async function seedDummyData(): Promise<void> {
           contact.daysAgo,
         ]
       );
-      console.log(`  ✅ ${contact.name}: ${contact.subject} (${contact.status})`);
+      console.log(`  [SUCCESS] ${contact.name}: ${contact.subject} (${contact.status})`);
     }
 
-    console.log('\n🎉 더미 데이터 삽입 완료!');
+    console.log('\n[COMPLETE] 더미 데이터 삽입 완료!');
 
     // 통계 출력
     const [userCount] = await connection.query<any[]>('SELECT COUNT(*) as count FROM users');
@@ -208,7 +208,7 @@ async function seedDummyData(): Promise<void> {
     console.log(`  - 문의 메시지: ${contactCount[0].count}건`);
 
   } catch (error) {
-    console.error('❌ 더미 데이터 삽입 실패:', error);
+    console.error('[ERROR] 더미 데이터 삽입 실패:', error);
     throw error;
   } finally {
     await connection.end();

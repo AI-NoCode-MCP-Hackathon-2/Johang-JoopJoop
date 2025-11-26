@@ -15,7 +15,7 @@ export async function initializeDatabase(): Promise<void> {
       password: process.env.DB_PASSWORD,
     });
 
-    console.log('📦 데이터베이스 생성 시작...');
+    console.log('[INFO] 데이터베이스 생성 시작...');
 
     // 데이터베이스 생성
     await connection.query(`
@@ -23,11 +23,11 @@ export async function initializeDatabase(): Promise<void> {
       CHARACTER SET utf8mb4
       COLLATE utf8mb4_unicode_ci;
     `);
-    console.log(`✅ 데이터베이스 '${process.env.DB_NAME}' 생성 완료`);
+    console.log(`[SUCCESS] 데이터베이스 '${process.env.DB_NAME}' 생성 완료`);
 
     // 생성한 데이터베이스 선택
     await connection.query(`USE ${process.env.DB_NAME};`);
-    console.log('📦 테이블 생성 시작...');
+    console.log('[INFO] 테이블 생성 시작...');
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -45,7 +45,7 @@ export async function initializeDatabase(): Promise<void> {
         INDEX idx_role (role)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
-    console.log('✅ users 테이블 생성 완료');
+    console.log('[SUCCESS] users 테이블 생성 완료');
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS analysis_history (
@@ -62,7 +62,7 @@ export async function initializeDatabase(): Promise<void> {
         INDEX idx_risk_level (risk_level)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
-    console.log('✅ analysis_history 테이블 생성 완료');
+    console.log('[SUCCESS] analysis_history 테이블 생성 완료');
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS sessions (
@@ -77,7 +77,7 @@ export async function initializeDatabase(): Promise<void> {
         INDEX idx_expires_at (expires_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
-    console.log('✅ sessions 테이블 생성 완료');
+    console.log('[SUCCESS] sessions 테이블 생성 완료');
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS contact_messages (
@@ -95,7 +95,7 @@ export async function initializeDatabase(): Promise<void> {
         INDEX idx_created_at (created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
-    console.log('✅ contact_messages 테이블 생성 완료');
+    console.log('[SUCCESS] contact_messages 테이블 생성 완료');
 
     const [adminExists] = await connection.query<any[]>(
       `SELECT id FROM users WHERE email = ? LIMIT 1`,
@@ -111,7 +111,7 @@ export async function initializeDatabase(): Promise<void> {
          VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())`,
         [adminId, '관리자', 'admin@johangjoopjoop.com', hashedPassword, 'email', 'admin', 999]
       );
-      console.log('✅ 관리자 계정 생성 완료');
+      console.log('[SUCCESS] 관리자 계정 생성 완료');
       console.log('   이메일: admin@johangjoopjoop.com');
       console.log('   비밀번호: admin123!@#');
     } else {
@@ -119,9 +119,9 @@ export async function initializeDatabase(): Promise<void> {
     }
 
     await connection.end();
-    console.log('✅ 데이터베이스 초기화 완료!');
+    console.log('[SUCCESS] 데이터베이스 초기화 완료!');
   } catch (error) {
-    console.error('❌ 데이터베이스 초기화 실패:', error);
+    console.error('[ERROR] 데이터베이스 초기화 실패:', error);
     throw error;
   }
 }
