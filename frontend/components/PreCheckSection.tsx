@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle2, AlertTriangle, ArrowRight, Lock, Crown, Zap, FileSearch, Shield, Filter, X } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertTriangle, ArrowRight, Lock, Crown, Zap, FileSearch, Shield, X } from 'lucide-react';
 import Reveal from './Reveal';
 import Loader from './Loader';
 import { useAuth } from './AuthContext';
-import { useAnalysisHistory } from './AnalysisHistoryContext';
 import { Page } from '../App';
-import MockContractCard, { ClauseResult, RiskLevel } from './MockContractCard';
+import { ClauseResult, RiskLevel } from './MockContractCard';
+import PDFHighlightViewer from './PDFHighlightViewer';
 import api from '../utils/api';
 import { maskSensitiveInfo } from '../utils/masking';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -112,21 +112,28 @@ const extractTextFromPDF = async (file: File): Promise<string> => {
   return fullText;
 };
 
+interface N8nClauseData {
+  '조항 번호'?: string;
+  '조항 제목'?: string;
+  '조항': string;
+  '위험도 색상': string;
+  '설명': string;
+  rank?: number;
+  name?: string;
+  clause?: string;
+  risk?: string;
+}
+
 const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState<ClauseResult[]>([]);
   const [contractText, setContractText] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [n8nClauses, setN8nClauses] = useState<N8nClauseData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Filter & Sort State
-  const [showKeyOnly, setShowKeyOnly] = useState(false);
-  const [riskFilter, setRiskFilter] = useState<'ALL' | RiskLevel>('ALL');
-  const [sortOrder, setSortOrder] = useState<'DEFAULT' | 'HIGH_RISK' | 'LOW_RISK'>('DEFAULT');
-
-  const { user, isAuthenticated, canUseCheck, consumeCheck } = useAuth();
-  const { addRecord } = useAnalysisHistory();
+  const { user, isAuthenticated, canUseCheck, refreshUser } = useAuth();
 
   const isLimitReached = isAuthenticated && !canUseCheck();
 
@@ -191,61 +198,43 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
         fileName: fileName,
       });
 
-      // n8n 응답을 ClauseResult 형식으로 변환
+      // n8n 응답 처리
       const clauses = data.data.clauses || [];
+
+      // n8n 원본 데이터를 PDF 하이라이트용으로 변환
+      const n8nClauseData: N8nClauseData[] = clauses.map((c: any) => ({
+        '조항 번호': c.rank || '',
+        '조항 제목': c.name || '',
+        '조항': c.clause || '',
+        '위험도 색상': (c.risk || '').toUpperCase(),
+        '설명': c.reason || '',
+      }));
+
+      // ClauseResult 형식으로도 변환 (사이드바 표시용)
       const convertedResults: ClauseResult[] = clauses.map((c: any, idx: number) => ({
         id: `clause-${idx + 1}`,
         title: c.name,
         originalText: c.clause,
-        easyExplanation: c.easyTranslation,
+        easyExplanation: c.easyTranslation || c.reason || '',
         summaryBullets: c.summary || [],
-        riskLevel: c.risk as RiskLevel,  // 'RED' | 'ORANGE' | 'YELLOW'
+        riskLevel: c.risk as RiskLevel,
         tags: [c.name],
         isKeyClause: c.risk === 'RED' || c.risk === 'ORANGE',
       }));
 
+      setN8nClauses(n8nClauseData);
       setResults(convertedResults);
       setShowResults(true);
 
-      // Sync quota with server
-      await consumeCheck();
-
-      // Add to analysis history
-      if (user) {
-        addRecord({
-          title: `${fileName} 분석 결과`,
-          riskLevel: data.data.analysis?.risk_level || 'low',
-          fileName: fileName,
-        });
-      }
+      // 백엔드에서 이미 분석 횟수 차감 및 MySQL 저장 완료
+      // user 정보를 새로고침하여 남은 횟수 업데이트
+      await refreshUser();
     } catch (error: any) {
       console.error('분석 오류:', error);
       alert(error.response?.data?.message || '분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Derived state for filtering and sorting
-  const filteredResults = results
-    .filter(r => !showKeyOnly || r.isKeyClause)
-    .filter(r => riskFilter === 'ALL' || r.riskLevel === riskFilter)
-    .sort((a, b) => {
-      if (sortOrder === 'DEFAULT') return 0;
-
-      const riskScore = { 'RED': 3, 'ORANGE': 2, 'YELLOW': 1 };
-      const scoreA = riskScore[a.riskLevel];
-      const scoreB = riskScore[b.riskLevel];
-
-      if (sortOrder === 'HIGH_RISK') return scoreB - scoreA;
-      if (sortOrder === 'LOW_RISK') return scoreA - scoreB;
-      return 0;
-    });
-
-  const riskCounts = {
-    RED: results.filter(r => r.riskLevel === 'RED').length,
-    ORANGE: results.filter(r => r.riskLevel === 'ORANGE').length,
-    YELLOW: results.filter(r => r.riskLevel === 'YELLOW').length,
   };
 
   return (
@@ -518,89 +507,119 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
             </div>
           </div>
         ) : (
-          /* Analysis Result View */
-          <div className="max-w-6xl mx-auto">
+          /* Analysis Result View - PDF Highlight */
+          <div className="max-w-7xl mx-auto">
             <Reveal>
-              {/* Summary Header */}
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-6 mb-8 flex flex-wrap gap-6 items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold mb-1">분석 완료!</h2>
-                  <p className="text-slate-300 text-sm">총 {results.length}개의 조항을 분석했습니다.</p>
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="inline-block px-4 py-1 bg-teal-500/20 border border-teal-500/30 rounded-full mb-4">
+                  <span className="text-xs font-bold text-teal-300 uppercase tracking-wider">Live Highlight</span>
                 </div>
-                <div className="flex gap-3">
-                  <div className="bg-red-500/20 border border-red-500/30 px-4 py-2 rounded-xl text-center">
-                    <span className="block text-xs text-red-300 font-bold">위험 (RED)</span>
-                    <span className="text-xl font-black text-red-400">{riskCounts.RED}</span>
-                  </div>
-                  <div className="bg-orange-500/20 border border-orange-500/30 px-4 py-2 rounded-xl text-center">
-                    <span className="block text-xs text-orange-300 font-bold">주의 (ORANGE)</span>
-                    <span className="text-xl font-black text-orange-400">{riskCounts.ORANGE}</span>
-                  </div>
-                  <div className="bg-yellow-500/20 border border-yellow-500/30 px-4 py-2 rounded-xl text-center">
-                    <span className="block text-xs text-yellow-300 font-bold">확인 (YELLOW)</span>
-                    <span className="text-xl font-black text-yellow-400">{riskCounts.YELLOW}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Filter & Sort Bar */}
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-8 bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
-                <div className="flex items-center gap-3 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-                  <span className="text-sm font-bold text-slate-400 flex items-center gap-1"><Filter className="w-4 h-4" /> 필터:</span>
-
-                  {['ALL', 'RED', 'ORANGE', 'YELLOW'].map((level) => (
-                    <button
-                      key={level}
-                      onClick={() => setRiskFilter(level as any)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
-                        riskFilter === level
-                          ? 'bg-teal-600 text-white'
-                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                      }`}
-                    >
-                      {level === 'ALL' ? '전체' : level}
-                    </button>
-                  ))}
-
-                  <div className="h-6 w-px bg-slate-600 mx-1"></div>
-
-                  <button
-                    onClick={() => setShowKeyOnly(!showKeyOnly)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${
-                      showKeyOnly
-                        ? 'bg-indigo-600 border-indigo-500 text-white'
-                        : 'bg-transparent border-slate-600 text-slate-400 hover:bg-slate-700'
-                    }`}
-                  >
-                    중요 조항만 보기
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 ml-auto">
-                  <span className="text-xs text-slate-400">정렬:</span>
-                  <select
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value as any)}
-                    className="bg-slate-900 border border-slate-600 text-slate-300 text-sm rounded-lg focus:ring-teal-500 focus:border-teal-500 block p-2"
-                  >
-                    <option value="DEFAULT">기본 순서</option>
-                    <option value="HIGH_RISK">위험도 높은 순</option>
-                    <option value="LOW_RISK">위험도 낮은 순</option>
-                  </select>
+                <h2 className="text-3xl font-bold mb-2">근로계약서 위험도 하이라이트</h2>
+                <p className="text-slate-400 mb-6">
+                  <strong className="text-teal-400">분석 파일:</strong> {selectedFile?.name || '계약서'}
+                </p>
+                <div className="flex gap-3 justify-center flex-wrap">
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-slate-700">
+                    <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                    <span className="text-sm font-bold">RED 위험</span>
+                  </span>
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-slate-700">
+                    <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                    <span className="text-sm font-bold">ORANGE 위험</span>
+                  </span>
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-slate-700">
+                    <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
+                    <span className="text-sm font-bold">YELLOW 위험</span>
+                  </span>
                 </div>
               </div>
 
-              {/* Results List */}
-              <div className="space-y-6">
-                {filteredResults.map((clause) => (
-                  <MockContractCard key={clause.id} clause={clause} />
-                ))}
+              {/* Main Layout: PDF + Clause List (n8n.html 방식) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', alignItems: 'start' }}>
+                {/* PDF Viewer (Left - 2fr) */}
+                <section style={{
+                  background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01))',
+                  border: '1px solid rgba(31, 41, 55, 1)',
+                  borderRadius: '16px',
+                  padding: '14px',
+                  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.35)'
+                }}>
+                  {selectedFile && (
+                    <PDFHighlightViewer pdfFile={selectedFile} clauses={n8nClauses} />
+                  )}
+                </section>
 
-                {filteredResults.length === 0 && (
-                  <div className="text-center py-12 text-slate-500">
-                    해당 조건에 맞는 조항이 없습니다.
+                {/* Clause List (Right - 1fr) */}
+                <aside style={{
+                  background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01))',
+                  border: '1px solid rgba(31, 41, 55, 1)',
+                  borderRadius: '16px',
+                  padding: '14px',
+                  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.35)'
+                }}>
+                  <div style={{ marginBottom: '10px' }}>
+                    <div className="flex items-center justify-between">
+                      <h3 style={{ margin: 0, fontWeight: 'bold', fontSize: '1.125rem' }}>위험 조항</h3>
+                      <span className="px-3 py-1 rounded-full text-xs font-bold" style={{
+                        background: 'rgba(34,211,238,0.12)',
+                        borderColor: '#22d3ee',
+                        color: '#67e8f9',
+                        border: '1px solid #22d3ee'
+                      }}>
+                        자동 하이라이트
+                      </span>
+                    </div>
                   </div>
-                )}
+
+                  <div className="space-y-3">
+                    {results.map((clause, idx) => {
+                      const riskColors = {
+                        RED: { border: '#ef4444', bg: 'rgba(239,68,68,0.28)', label: 'RED' },
+                        ORANGE: { border: '#f97316', bg: 'rgba(249,115,22,0.25)', label: 'ORANGE' },
+                        YELLOW: { border: '#eab308', bg: 'rgba(234,179,8,0.25)', label: 'YELLOW' },
+                      };
+                      const color = riskColors[clause.riskLevel];
+
+                      return (
+                        <article
+                          key={clause.id}
+                          className="border rounded-xl p-3"
+                          style={{
+                            borderColor: color.border,
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)'
+                          }}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span
+                              className="px-2 py-1 rounded text-xs font-bold"
+                              style={{
+                                borderColor: color.border,
+                                color: color.border,
+                                border: `1px solid ${color.border}`,
+                                background: color.bg
+                              }}
+                            >
+                              {color.label}
+                            </span>
+                            <span style={{ color: 'var(--muted)', fontSize: '12px' }}>#{idx + 1}</span>
+                          </div>
+                          <h4 style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: 'bold' }}>{clause.title || '조항 없음'}</h4>
+                          <p className="text-xs leading-relaxed" style={{ margin: '6px 0 0', color: '#cbd5e1', fontSize: '13px', lineHeight: '1.4' }}>
+                            {clause.easyExplanation}
+                          </p>
+                        </article>
+                      );
+                    })}
+
+                    {results.length === 0 && (
+                      <div className="text-center py-12 text-sm" style={{ color: 'var(--muted)' }}>
+                        위험 조항이 발견되지 않았습니다.
+                      </div>
+                    )}
+                  </div>
+                </aside>
               </div>
 
               {/* Recommended Docs Section */}

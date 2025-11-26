@@ -30,6 +30,7 @@ interface AuthContextValue {
   sendPasswordResetEmail: (email: string) => Promise<void>;
   canUseCheck: () => boolean;
   consumeCheck: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -250,6 +251,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await syncRemainingChecks();
   };
 
+  const refreshUser = async () => {
+    if (!user) return;
+
+    try {
+      const { data } = await api.get('/auth/me');
+      const userData: User = {
+        id: data.data.user.id,
+        name: data.data.user.name,
+        email: data.data.user.email,
+        provider: data.data.user.provider || 'email',
+        role: data.data.user.role,
+        remainingChecksToday: data.data.user.remaining_checks_today ?? data.data.user.remainingChecksToday ?? 5,
+        lastCheckDate: data.data.user.lastCheckDate,
+      };
+      setUser(userData);
+    } catch (error) {
+      console.error('사용자 정보 새로고침 실패:', error);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -267,6 +288,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         sendPasswordResetEmail,
         canUseCheck,
         consumeCheck,
+        refreshUser,
       }}
     >
       {children}

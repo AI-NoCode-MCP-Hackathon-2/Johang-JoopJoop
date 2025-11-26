@@ -25,6 +25,56 @@
       .delay-100 { transition-delay: 100ms; }
       .delay-200 { transition-delay: 200ms; }
       .delay-300 { transition-delay: 300ms; }
+
+      /* PDF.js TextLayer 스타일 (n8n.html에서 가져옴) */
+      .textLayer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
+        opacity: 1;
+        line-height: 1.0;
+      }
+
+      .textLayer > span {
+        color: transparent;
+        position: absolute;
+        white-space: pre;
+        cursor: text;
+        transform-origin: 0% 0%;
+      }
+
+      /* 하이라이트 효과 */
+      .textLayer > span.highlight-red {
+        background-color: rgba(239, 68, 68, 0.4) !important;
+        color: transparent !important;
+      }
+
+      .textLayer > span.highlight-orange {
+        background-color: rgba(249, 115, 22, 0.35) !important;
+        color: transparent !important;
+      }
+
+      .textLayer > span.highlight-yellow {
+        background-color: rgba(234, 179, 8, 0.35) !important;
+        color: transparent !important;
+      }
+
+      /* PDF 페이지 스타일 */
+      .pdf-page {
+        position: relative;
+        margin: 0 auto;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+        background: white;
+      }
+
+      .pdf-page canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
     </style>
   <script type="importmap">
 {
