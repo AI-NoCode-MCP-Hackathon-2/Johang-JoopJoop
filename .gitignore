@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment files
+.env
+*.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Claude plans
+.claude/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Local work files (로컬 작업용 파일 - GitHub 제외)
+n8n.html
+n8n응답형식.md
+진행사항 정리.md
+최우선지시사항.md
+하이라이트 및 데이터 마스킹 기능.html
+로고.png
+깃허브 업로드용/
+frontend/.vite/
