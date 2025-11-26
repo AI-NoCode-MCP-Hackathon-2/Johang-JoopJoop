@@ -837,6 +837,48 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
                 </aside>
               </div>
 
+              {/* Summary Section */}
+              {results.length > 0 && (
+                <div className="mt-16 pt-10 border-t border-slate-800">
+                  <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                    <FileText className="w-6 h-6 text-indigo-400" />
+                    분석 요약
+                  </h3>
+                  <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-6 border border-slate-700">
+                    <div className="space-y-4">
+                      {results.map((clause: ClauseResult) => (
+                        <div key={clause.id} className="border-l-4 pl-4" style={{
+                          borderColor: clause.riskLevel === 'RED' ? '#ef4444' :
+                                      clause.riskLevel === 'ORANGE' ? '#f97316' : '#eab308'
+                        }}>
+                          <div className="flex items-start gap-3 mb-2">
+                            <span className="text-xs font-bold px-2 py-1 rounded" style={{
+                              background: clause.riskLevel === 'RED' ? 'rgba(239,68,68,0.2)' :
+                                         clause.riskLevel === 'ORANGE' ? 'rgba(249,115,22,0.2)' : 'rgba(234,179,8,0.2)',
+                              color: clause.riskLevel === 'RED' ? '#ef4444' :
+                                    clause.riskLevel === 'ORANGE' ? '#f97316' : '#eab308'
+                            }}>
+                              {clause.riskLevel}
+                            </span>
+                            <h4 className="font-bold text-white flex-1">{clause.title}</h4>
+                          </div>
+                          {clause.summaryBullets && Array.isArray(clause.summaryBullets) && clause.summaryBullets.length > 0 && (
+                            <ul className="space-y-1 ml-2">
+                              {clause.summaryBullets.map((bullet: string, bulletIdx: number) => (
+                                <li key={bulletIdx} className="text-sm flex items-start gap-2 text-slate-300">
+                                  <span className="text-teal-400 mt-1">•</span>
+                                  <span>{bullet}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Recommended Docs Section */}
               <div className="mt-16 pt-10 border-t border-slate-800">
                 <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
