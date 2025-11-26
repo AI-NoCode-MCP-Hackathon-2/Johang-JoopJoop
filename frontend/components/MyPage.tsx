@@ -63,21 +63,9 @@ const MyPage: React.FC = () => {
     }
   };
 
-  const handleViewDetail = async (recordId: string) => {
-    setIsLoadingDetail(true);
-    setShowDetailModal(true);
-    setDetailData(null);
-
-    try {
-      const { data } = await api.get(`/analysis/${recordId}`);
-      setDetailData(data.data.analysis);
-    } catch (error) {
-      console.error('상세 정보 로드 실패:', error);
-      alert('상세 정보를 불러오는데 실패했습니다.');
-      setShowDetailModal(false);
-    } finally {
-      setIsLoadingDetail(false);
-    }
+  const handleViewDetail = (recordId: string) => {
+    // 분석 결과 페이지로 이동 (URL에 분석 ID 포함)
+    window.location.hash = `#/check?analysisId=${recordId}`;
   };
 
   const handleCloseDetailModal = () => {

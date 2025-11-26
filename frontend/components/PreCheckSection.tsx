@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, FileText, CheckCircle2, AlertTriangle, ArrowRight, Lock, Crown, Zap, FileSearch, Shield, X } from 'lucide-react';
 import Reveal from './Reveal';
 import Loader from './Loader';
