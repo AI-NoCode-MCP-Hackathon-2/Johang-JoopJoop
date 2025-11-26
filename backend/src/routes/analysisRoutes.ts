@@ -6,6 +6,7 @@ import {
   getAnalysisById,
   deleteAnalysis,
   analyzeContract,
+  analyzeContractN8n,
 } from '../controllers/analysisController';
 import { authenticate } from '../middleware/auth';
 
@@ -20,6 +21,16 @@ router.post(
     body('fileName').optional().trim(),
   ],
   analyzeContract
+);
+
+// n8n 웹훅을 통한 분석 (마스킹된 텍스트 전송)
+router.post(
+  '/analyze-n8n',
+  [
+    body('text').trim().notEmpty().withMessage('분석할 텍스트를 입력해주세요'),
+    body('fileName').optional().trim(),
+  ],
+  analyzeContractN8n
 );
 
 router.post(

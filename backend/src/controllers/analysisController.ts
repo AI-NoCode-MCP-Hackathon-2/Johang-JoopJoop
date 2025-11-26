@@ -4,6 +4,7 @@ import { AppError } from '../utils/errors';
 import { UserModel } from '../models/User';
 import { validationResult } from 'express-validator';
 import { analyzeContract as analyzeWithGemini } from '../services/geminiService';
+import axios from 'axios';
 
 export async function saveAnalysis(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -158,5 +159,75 @@ export async function analyzeContract(req: Request, res: Response, next: NextFun
     });
   } catch (error) {
     next(error);
+  }
+}
+
+// n8n 웹훅을 통한 계약서 분석
+export async function analyzeContractN8n(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) {
+      throw new AppError('인증이 필요합니다', 401);
+    }
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new AppError('입력값이 유효하지 않습니다', 400);
+    }
+
+    const { text, fileName } = req.body;
+
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+    if (!n8nWebhookUrl) {
+      throw new AppError('n8n 웹훅 URL이 설정되지 않았습니다', 500);
+    }
+
+    // n8n 웹훅 호출
+    const n8nResponse = await axios.post(n8nWebhookUrl, {
+      filename: fileName || '계약서',
+      text: text,
+    }, {
+      timeout: 60000, // 60초 타임아웃
+    });
+
+    // 응답 파싱
+    const parsed = n8nResponse.data.parsed || [];
+
+    // 전체 위험도 계산 (RED > ORANGE > YELLOW)
+    let overallRisk: 'high' | 'medium' | 'low' = 'low';
+    for (const clause of parsed) {
+      if (clause.risk === 'RED') {
+        overallRisk = 'high';
+        break;
+      } else if (clause.risk === 'ORANGE' && overallRisk !== 'high') {
+        overallRisk = 'medium';
+      }
+    }
+
+    // DB에 저장 (분석 결과만, 원문은 저장하지 않음)
+    const analysis = await AnalysisHistoryModel.create({
+      userId: req.user.userId,
+      fileName: fileName || '계약서',
+      title: `${fileName || '계약서'} 분석 결과`,
+      riskLevel: overallRisk,
+      analysisResult: { clauses: parsed },
+    });
+
+    // 사용 횟수 차감
+    await UserModel.decrementRemainingChecks(req.user.userId);
+
+    res.status(201).json({
+      success: true,
+      message: '분석이 완료되었습니다',
+      data: {
+        analysis,
+        clauses: parsed,
+      },
+    });
+  } catch (error: any) {
+    if (axios.isAxiosError(error)) {
+      next(new AppError(`n8n 웹훅 호출 실패: ${error.message}`, 502));
+    } else {
+      next(error);
+    }
   }
 }

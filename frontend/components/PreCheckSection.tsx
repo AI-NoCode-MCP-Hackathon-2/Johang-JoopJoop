@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Upload, FileText, CheckCircle2, AlertTriangle, ArrowRight, Lock, Crown, Zap, FileSearch, Shield, Filter } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Upload, FileText, CheckCircle2, AlertTriangle, ArrowRight, Lock, Crown, Zap, FileSearch, Shield, Filter, X } from 'lucide-react';
 import Reveal from './Reveal';
 import Loader from './Loader';
 import { useAuth } from './AuthContext';
@@ -7,6 +7,8 @@ import { useAnalysisHistory } from './AnalysisHistoryContext';
 import { Page } from '../App';
 import MockContractCard, { ClauseResult, RiskLevel } from './MockContractCard';
 import api from '../utils/api';
+import { maskSensitiveInfo } from '../utils/masking';
+import * as pdfjsLib from 'pdfjs-dist';
 
 interface PreCheckSectionProps {
   onNavigate?: (page: Page) => void;
