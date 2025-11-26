@@ -207,7 +207,7 @@ export async function analyzeContractN8n(req: Request, res: Response, next: Next
       overallRisk = 'high';
     }
 
-    // n8n 결과를 AnalysisResult 형식으로 변환
+    // n8n 결과를 AnalysisResult 형식으로 변환 (모든 정보 포함)
     const analysisResult: AnalysisResult = {
       title: `${fileName || '계약서'} 분석 결과`,
       risk_level: overallRisk,
@@ -215,14 +215,17 @@ export async function analyzeContractN8n(req: Request, res: Response, next: Next
         ? `총 ${parsed.length}개의 조항이 분석되었습니다. ${parsed.filter((c: any) => c.risk === 'RED').length}개의 위험 조항이 발견되었습니다.`
         : '분석 결과가 없습니다.',
       risks: parsed.map((clause: any) => ({
-        category: clause.title || '일반 조항',
-        issue: clause.reason || clause.text || '',
+        category: clause.name || '일반 조항',
+        issue: clause.clause || '',
         severity: clause.risk === 'RED' ? 'high' : clause.risk === 'ORANGE' ? 'medium' : 'low',
-        recommendation: clause.recommendation || '검토가 필요합니다.',
+        recommendation: clause.easyTranslation || '검토가 필요합니다.',
+        summary: clause.summary || [],
+        rank: clause.rank || 0,
+        originalClause: clause.clause || '',
       })),
       legal_points: parsed
         .filter((c: any) => c.risk === 'RED' || c.risk === 'ORANGE')
-        .map((c: any) => c.reason || c.text || ''),
+        .map((c: any) => c.easyTranslation || c.clause || ''),
       overall_score: overallRisk === 'high' ? 30 : overallRisk === 'medium' ? 60 : 85,
     };
 

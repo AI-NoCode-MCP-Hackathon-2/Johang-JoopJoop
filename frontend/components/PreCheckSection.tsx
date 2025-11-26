@@ -152,15 +152,15 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
 
           setLoadedAnalysisId(analysisId);
 
-          // analysis_result에서 조항 정보 추출
+          // analysis_result에서 조항 정보 추출 (모든 정보 포함)
           const analysisResult = analysis.analysis_result;
           if (analysisResult && analysisResult.risks) {
             const convertedResults: ClauseResult[] = analysisResult.risks.map((risk: any, idx: number) => ({
               id: `clause-${idx + 1}`,
               title: risk.category || '조항',
-              originalText: risk.issue || '',
+              originalText: risk.originalClause || risk.issue || '',
               easyExplanation: risk.recommendation || '',
-              summaryBullets: [],
+              summaryBullets: risk.summary || [],
               riskLevel: (risk.severity === 'high' ? 'RED' : risk.severity === 'medium' ? 'ORANGE' : 'YELLOW') as RiskLevel,
               tags: [risk.category || '일반'],
               isKeyClause: risk.severity === 'high' || risk.severity === 'medium',
