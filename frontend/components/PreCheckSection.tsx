@@ -91,12 +91,30 @@ const SAMPLE_CASES = [
   }
 ];
 
+// PDF.js 워커 설정
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// PDF 텍스트 추출 함수
+const extractTextFromPDF = async (file: File): Promise<string> => {
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+
+  let fullText = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    fullText += textContent.items.map((item: any) => item.str).join(' ') + '\n';
+  }
+  return fullText;
+};
+
 const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState<ClauseResult[]>([]);
   const [contractText, setContractText] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Filter & Sort State
   const [showKeyOnly, setShowKeyOnly] = useState(false);
@@ -107,6 +125,38 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
   const { addRecord } = useAnalysisHistory();
 
   const isLimitReached = isAuthenticated && !canUseCheck();
+
+  // 파일 선택 핸들러
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+
+    // PDF 파일인 경우 텍스트 추출
+    if (file.type === 'application/pdf') {
+      try {
+        const text = await extractTextFromPDF(file);
+        setContractText(text);
+      } catch (error) {
+        alert('PDF 파일을 읽는 중 오류가 발생했습니다.');
+        console.error(error);
+      }
+    } else if (file.type === 'text/plain') {
+      // TXT 파일인 경우
+      const text = await file.text();
+      setContractText(text);
+    }
+  };
+
+  // 파일 삭제 핸들러
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setContractText('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleAnalyzeClick = async () => {
     if (!isAuthenticated) {
@@ -127,22 +177,27 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
     setIsLoading(true);
 
     try {
-      const { data } = await api.post('/analysis/analyze', {
-        contractText: contractText,
-        fileName: selectedFile?.name || '계약서',
+      // 마스킹 적용 (민감정보 제거)
+      const maskedText = maskSensitiveInfo(contractText);
+      const fileName = selectedFile?.name || '계약서';
+
+      // n8n 웹훅을 통한 분석
+      const { data } = await api.post('/analysis/analyze-n8n', {
+        text: maskedText,
+        fileName: fileName,
       });
 
-      // Convert backend analysis result to frontend ClauseResult format
-      const analysisResult = data.data.analysisResult;
-      const convertedResults: ClauseResult[] = analysisResult.risks.map((risk: any, index: number) => ({
-        id: `clause-${index + 1}`,
-        title: risk.issue,
-        originalText: risk.issue,
-        easyExplanation: risk.recommendation,
-        summaryBullets: [risk.recommendation],
-        riskLevel: risk.severity === 'high' ? 'RED' : risk.severity === 'medium' ? 'ORANGE' : 'YELLOW',
-        tags: [risk.category],
-        isKeyClause: risk.severity === 'high' || risk.severity === 'medium',
+      // n8n 응답을 ClauseResult 형식으로 변환
+      const clauses = data.data.clauses || [];
+      const convertedResults: ClauseResult[] = clauses.map((c: any, idx: number) => ({
+        id: `clause-${idx + 1}`,
+        title: c.name,
+        originalText: c.clause,
+        easyExplanation: c.easyTranslation,
+        summaryBullets: c.summary || [],
+        riskLevel: c.risk as RiskLevel,  // 'RED' | 'ORANGE' | 'YELLOW'
+        tags: [c.name],
+        isKeyClause: c.risk === 'RED' || c.risk === 'ORANGE',
       }));
 
       setResults(convertedResults);
@@ -154,15 +209,14 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
       // Add to analysis history
       if (user) {
         addRecord({
-          title: analysisResult.title,
-          riskLevel: analysisResult.risk_level,
-          fileName: selectedFile?.name || '계약서',
+          title: `${fileName} 분석 결과`,
+          riskLevel: data.data.analysis?.risk_level || 'low',
+          fileName: fileName,
         });
       }
-
-      alert(`분석이 완료되었습니다!\n${analysisResult.risks.length}개의 위험 조항을 발견했습니다.`);
     } catch (error: any) {
-      alert(error.response?.data?.message || '분석 중 오류가 발생했습니다');
+      console.error('분석 오류:', error);
+      alert(error.response?.data?.message || '분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
@@ -299,12 +353,42 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
                   </div>
 
                   <div className={`border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:bg-slate-50 hover:border-teal-400 transition-all mb-6 ${(!isAuthenticated || isLimitReached) ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <div className="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Upload className="w-6 h-6 text-teal-600" />
-                    </div>
-                    <p className="text-slate-600 text-sm">
-                      또는 이미지/PDF 파일 업로드 (향후 지원 예정)
-                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.txt"
+                      onChange={handleFileSelect}
+                      disabled={!isAuthenticated || isLimitReached}
+                      className="hidden"
+                      id="contract-file-input"
+                    />
+                    {selectedFile ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <FileText className="w-8 h-8 text-teal-600" />
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-slate-700">{selectedFile.name}</p>
+                          <p className="text-xs text-slate-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                        <button
+                          onClick={handleRemoveFile}
+                          className="ml-2 p-1 hover:bg-slate-200 rounded-full transition-colors"
+                        >
+                          <X className="w-5 h-5 text-slate-500" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label htmlFor="contract-file-input" className="cursor-pointer">
+                        <div className="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <Upload className="w-6 h-6 text-teal-600" />
+                        </div>
+                        <p className="text-slate-600 text-sm">
+                          PDF 또는 TXT 파일을 업로드하세요
+                        </p>
+                        <p className="text-slate-400 text-xs mt-1">
+                          클릭하여 파일 선택
+                        </p>
+                      </label>
+                    )}
                   </div>
 
                   <p className="text-xs text-slate-400 text-center flex items-center justify-center gap-1">
