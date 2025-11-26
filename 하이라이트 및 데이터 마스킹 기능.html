@@ -1,0 +1,891 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:,">
+  <title>근로계약서 위험도 하이라이트 뷰어</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --card: #0b1221;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #1f2937;
+      --accent: #22d3ee;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Inter", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 10% 20%, rgba(34, 211, 238, 0.15), transparent 25%),
+        radial-gradient(circle at 80% 0%, rgba(236, 72, 153, 0.12), transparent 20%),
+        var(--bg);
+      color: var(--text);
+      padding: 28px;
+    }
+
+    h1 {
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    p {
+      color: var(--muted);
+      margin: 8px 0;
+      line-height: 1.5;
+    }
+
+    .eyebrow {
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: #7dd3fc;
+    }
+
+    .header {
+      max-width: 1100px;
+      margin: 0 auto 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    #pdf-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* PDF.js 페이지 스타일 */
+    .pdf-page {
+      position: relative;
+      margin: 0 auto;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+      background: white;
+    }
+
+    .pdf-page canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .textLayer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+      opacity: 1;
+      line-height: 1.0;
+      --scale-factor: 1.0;
+    }
+
+    .textLayer>span {
+      color: transparent;
+      position: absolute;
+      white-space: pre;
+      cursor: text;
+      transform-origin: 0% 0%;
+    }
+
+    /* 하이라이트 효과 */
+    .textLayer>span.highlight-red {
+      background-color: rgba(239, 68, 68, 0.4) !important;
+      color: transparent;
+    }
+
+    .textLayer>span.highlight-orange {
+      background-color: rgba(249, 115, 22, 0.35) !important;
+      color: transparent;
+    }
+
+    .textLayer>span.highlight-yellow {
+      background-color: rgba(234, 179, 8, 0.35) !important;
+      color: transparent;
+    }
+
+    #pdf-status {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .clause-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .clause {
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .clause h4 {
+      margin: 0 0 6px;
+      font-size: 15px;
+    }
+
+    .clause .meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .clause .note {
+      margin: 6px 0 0;
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    /* 업로드 버튼 스타일 */
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(34, 211, 238, 0.3);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .status.loading {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #60a5fa;
+    }
+
+    .status.success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #4ade80;
+    }
+
+    .status.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    @media (max-width: 1100px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="header">
+    <div class="eyebrow">Live highlight</div>
+    <h1>근로계약서 위험도 하이라이트</h1>
+
+    <!-- 업로드 섹션 -->
+    <div id="uploadSection"
+      style="background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 16px 0;">
+      <p style="color: var(--muted); margin: 0 0 12px; text-align: center;">PDF 파일을 업로드하여 독소 조항을 분석합니다</p>
+      <div style="display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap;">
+        <input type="file" id="pdfInput" accept="application/pdf"
+          style="padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text); cursor: pointer; font-size: 14px;">
+        <button id="sendBtn"
+          style="padding: 10px 20px; background: linear-gradient(135deg, #22d3ee, #3b82f6); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; font-size: 14px; transition: transform 0.2s;">분석
+          시작</button>
+        <button id="resetBtn"
+          style="display: none; padding: 10px 20px; background: linear-gradient(135deg, #f97316, #dc2626); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; font-size: 14px; transition: transform 0.2s;">새
+          분석</button>
+      </div>
+      <div id="status"
+        style="margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 14px; text-align: center; display: none;">
+      </div>
+    </div>
+
+    <p id="fileInfo" style="display: none;">
+      <strong style="color: var(--accent);">분석 방식:</strong>
+      PDF 텍스트를 AI가 분석해 JSON 형식의 위험 조항 리스트를 생성하고, 그 결과를 기준으로 원본 PDF에 하이라이트를 적용합니다.
+    </p>
+
+    <div class="legend">
+      <span class="chip"><span class="color-dot" style="background:#ef4444"></span>RED 위험</span>
+      <span class="chip"><span class="color-dot" style="background:#f97316"></span>ORANGE 위험</span>
+      <span class="chip"><span class="color-dot" style="background:#eab308"></span>YELLOW 위험</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <p id="pdf-status">PDF 파일을 업로드해주세요</p>
+      <div id="pdf-container"></div>
+    </section>
+
+    <aside class="panel">
+      <div class="meta" style="margin-bottom:10px;">
+        <h3 style="margin:0;">위험 조항</h3>
+        <span class="chip" style="background:rgba(34,211,238,0.12); border-color:#22d3ee; color:#67e8f9;">자동
+          하이라이트</span>
+      </div>
+      <div id="clause-list" class="clause-list"></div>
+    </aside>
+  </main>
+
+  <!-- pdf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const CMAP_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/';
+    const CMAP_PACKED = true;
+
+    const riskPalette = {
+      RED: { fill: 'rgba(239,68,68,0.28)', line: '#ef4444', label: 'RED' },
+      ORANGE: { fill: 'rgba(249,115,22,0.25)', line: '#f97316', label: 'ORANGE' },
+      YELLOW: { fill: 'rgba(234,179,8,0.25)', line: '#eab308', label: 'YELLOW' }
+    };
+
+    let pdfUrl = null;
+    let externalData = null;
+
+    const normalize = (str = '') => str.replace(/\s+/g, '').replace(/\u00ad/g, '').trim();
+    const normalizeText = (text = '') => text.replace(/\s+/g, '').toLowerCase();
+
+
+
+    // 🔒 숫자/날짜/연락처 등 민감정보 마스킹
+    function maskSensitiveInfo(text) {
+      if (!text) return "";
+
+      return text
+        // 주민등록번호 형태
+        .replace(/\d{6}-\d{7}/g, "******-*******")
+        // 전화번호 010-1234-5678, 02-123-4567 등
+        .replace(/\d{2,3}-\d{3,4}-\d{4}/g, "***-****-****")
+        // 이메일
+        .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "email(마스킹)")
+        // 연월일 (2025년 11월 25일)
+        .replace(/\d{2,4}\s*년\s*\d{1,2}\s*월\s*\d{1,2}\s*일/g, "YYYY년 MM월 DD일")
+        // 단독 숫자 금액 (10,000원 / 10000원)
+        .replace(/[\d,]{3,}\s*원/g, "금액(마스킹)")
+        // 연속 숫자(계좌번호 등) 6자리 이상
+        .replace(/\d{6,}/g, "숫자(마스킹)");
+    }
+
+    // 📑 "1. ..." "2. ..." 형식 조항 단위로 분리
+    function splitIntoClauses(fullText) {
+      const lines = (fullText || "").split(/\r?\n/);
+      const clauses = [];
+      let current = null;
+
+      const headingRegex = /^(\d+)\.\s*(.+)/;  // 예: "1. 근로개시일 : ..."
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) continue;
+
+        const m = line.match(headingRegex);
+
+        if (m) {
+          // 이전 조항 저장
+          if (current) clauses.push(current);
+
+          current = {
+            id: `clause_${m[1]}`,       // "clause_1"
+            title: line,                // "1. 근로개시일 : ..."
+            body: ""
+          };
+        } else if (current) {
+          // 현 조항 내용에 이어 붙이기
+          current.body += (current.body ? "\n" : "") + line;
+        }
+      }
+
+      if (current) clauses.push(current);
+
+      // 마스킹 적용 + API용 구조로 변환
+      return clauses.map(c => {
+        const rawText = `${c.title}\n${c.body}`;
+        const masked = maskSensitiveInfo(rawText);
+
+        return {
+          id: c.id,
+          title: c.title,
+          text: masked
+        };
+      });
+    }
+
+
+
+    const renderClauseList = (clauses) => {
+      const host = document.getElementById('clause-list');
+      host.innerHTML = '';
+      clauses.forEach((item, idx) => {
+        const riskKey = String(item['위험도 색상'] || item['위험도'] || '').toUpperCase();
+        const palette = riskPalette[riskKey] || { fill: 'rgba(148,163,184,0.2)', line: '#94a3b8', label: riskKey || 'N/A' };
+        const box = document.createElement('article');
+        box.className = 'clause';
+        box.style.borderColor = palette.line;
+        box.innerHTML = `
+          <div class="meta">
+            <span class="chip" style="border-color:${palette.line}; color:${palette.line}; background:${palette.fill};">${palette.label}</span>
+            <span style="color:var(--muted); font-size:12px;">#${idx + 1}</span>
+          </div>
+          <h4>${item['조항'] || '조항 없음'}</h4>
+          <p class="note">${(item['설명'] || '').replace(/\n/g, '<br>')}</p>
+        `;
+        host.appendChild(box);
+      });
+    };
+
+    // 문자열 유사도 계산 (하이라이트 매칭용)
+    function calculateSimilarity(str1, str2) {
+      const norm1 = normalizeText(str1);
+      const norm2 = normalizeText(str2);
+
+      if (!norm1 || !norm2) return 0;
+      if (norm1 === norm2) return 1.0;
+
+      const shorter = norm1.length < norm2.length ? norm1 : norm2;
+      const longer = norm1.length < norm2.length ? norm2 : norm1;
+
+      let matchCount = 0;
+      let longerIdx = 0;
+
+      for (let i = 0; i < shorter.length; i++) {
+        const ch = shorter[i];
+        const foundIdx = longer.indexOf(ch, longerIdx);
+        if (foundIdx !== -1) {
+          matchCount++;
+          longerIdx = foundIdx + 1;
+        }
+      }
+      return matchCount / shorter.length;
+    }
+
+
+
+
+
+
+    // 텍스트 레이어 하이라이트 (페이지 문자열 기반 버전)
+    const highlightTextLayer = (textLayerDiv, clauses) => {
+      if (!textLayerDiv || !clauses || clauses.length === 0) return;
+
+      const spans = Array.from(textLayerDiv.querySelectorAll('span'));
+      console.log(`\n🔍 하이라이트 시작 - span 개수: ${spans.length}, 조항 개수: ${clauses.length}`);
+
+      // 1) 페이지 전체 문자열 + span 인덱스 테이블 만들기
+      let pageTextNorm = '';
+      const spanInfos = spans.map((span) => {
+        const raw = span.textContent || '';
+        const norm = normalizeText(raw);        // 공백 제거 + 소문자
+        const start = pageTextNorm.length;
+        const end = start + norm.length;
+
+        pageTextNorm += norm;
+        return { span, start, end };
+      });
+
+      console.log('📏 페이지 전체 문자열 길이:', pageTextNorm.length);
+
+      let matchCount = 0;
+
+      // 2) 각 위험 조항을 페이지 문자열에서 위치 검색
+      clauses.forEach((clause, clauseIdx) => {
+        const targetText = clause['조항'] || clause['내용'] || '';
+        if (!targetText) {
+          console.log(`⚠️ 조항 #${clauseIdx + 1}: 텍스트 없음`);
+          return;
+        }
+
+        const riskKey = String(clause['위험도 색상'] || clause['위험도'] || '').toUpperCase();
+        let highlightClass = '';
+        if (riskKey.includes('RED')) highlightClass = 'highlight-red';
+        else if (riskKey.includes('ORANGE')) highlightClass = 'highlight-orange';
+        else if (riskKey.includes('YELLOW')) highlightClass = 'highlight-yellow';
+
+        if (!highlightClass) {
+          console.log(`⚠️ 조항 #${clauseIdx + 1}: 알 수 없는 위험도 '${riskKey}'`);
+          return;
+        }
+
+        console.log(`\n🎯 조항 #${clauseIdx + 1} (${riskKey}): ${targetText.slice(0, 80)}...`);
+
+        // "제목: 내용" 형태면 콜론 뒤 내용만 사용
+        let coreText = targetText;
+        if (targetText.includes(':')) {
+          coreText = targetText.split(':').slice(1).join(':').trim();
+        }
+
+        const normalizedTarget = normalizeText(coreText);
+        if (!normalizedTarget || normalizedTarget.length < 5) {
+          console.log('   ✗ 텍스트가 너무 짧아서 스킵');
+          return;
+        }
+
+        // 3) 페이지 문자열에서 이 조항이 나오는 위치 찾기
+        let pos = pageTextNorm.indexOf(normalizedTarget);
+        if (pos === -1) {
+          console.log('   ✗ 매칭 실패 - 페이지 문자열에서 찾을 수 없음');
+          return;
+        }
+
+        while (pos !== -1) {
+          const targetStart = pos;
+          const targetEnd = pos + normalizedTarget.length;
+
+          console.log(`   ✓ 매칭 구간: [${targetStart}, ${targetEnd})`);
+
+          // 4) 이 구간과 겹치는 span에만 하이라이트 적용
+          spanInfos.forEach(info => {
+            if (info.end <= targetStart) return; // info가 타깃 앞
+            if (info.start >= targetEnd) return; // info가 타깃 뒤
+            // 여기 도달하면 구간이 겹치는 span
+            info.span.classList.add(highlightClass);
+            info.span.style.backgroundColor =
+              riskKey === 'RED' ? 'rgba(239,68,68,0.4)' :
+                riskKey === 'ORANGE' ? 'rgba(249,115,22,0.35)' :
+                  'rgba(234,179,8,0.35)';
+          });
+
+          matchCount++;
+          // 같은 문장이 여러 번 있을 수도 있으니 다음 위치도 탐색
+          pos = pageTextNorm.indexOf(normalizedTarget, targetEnd);
+        }
+      });
+
+      console.log(`\n✅ 하이라이트 완료: ${matchCount}/${clauses.length}개 조항 매칭됨\n`);
+    };
+
+
+
+
+
+
+
+
+
+    const renderDocument = async (customData = null) => {
+      const status = document.getElementById('pdf-status');
+
+      if (!pdfUrl) {
+        status.textContent = 'PDF 파일을 업로드해주세요';
+        return;
+      }
+
+      try {
+        status.textContent = 'PDF를 불러오는 중...';
+
+        const pdf = await pdfjsLib.getDocument({
+          url: pdfUrl,
+          cMapUrl: CMAP_URL,
+          cMapPacked: CMAP_PACKED
+        }).promise;
+
+        const data = customData || externalData || {};
+        const clauses = data['위험 조항 리스트'] || data['독소 조항 리스트'] || data.clauses || [];
+
+        console.log('📊 사용 중인 분석 데이터:', data);
+        console.log('📋 위험 조항 수:', clauses.length);
+
+        renderClauseList(clauses);
+
+        const viewer = document.getElementById('pdf-container');
+        viewer.innerHTML = '';
+        status.textContent = '';
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+
+          const viewport = page.getViewport({ scale: 1.5 });
+          const pageDiv = document.createElement('div');
+          pageDiv.className = 'pdf-page';
+          pageDiv.style.width = viewport.width + 'px';
+          pageDiv.style.height = viewport.height + 'px';
+
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          pageDiv.appendChild(canvas);
+          viewer.appendChild(pageDiv);
+
+          await page.render({
+            canvasContext: context,
+            viewport: viewport
+          }).promise;
+
+          const textLayerDiv = document.createElement('div');
+          textLayerDiv.className = 'textLayer';
+          textLayerDiv.style.width = viewport.width + 'px';
+          textLayerDiv.style.height = viewport.height + 'px';
+          textLayerDiv.style.setProperty('--scale-factor', viewport.scale);
+          pageDiv.appendChild(textLayerDiv);
+
+          const textContent = await page.getTextContent();
+          const textLayer = pdfjsLib.renderTextLayer({
+            textContentSource: textContent,
+            container: textLayerDiv,
+            viewport: viewport
+          });
+
+          await textLayer.promise;
+
+          console.log(`📄 페이지 ${pageNum} 텍스트 레이어 렌더 완료 → 하이라이트`);
+          highlightTextLayer(textLayerDiv, clauses);
+        }
+
+        status.textContent = `✓ PDF ${pdf.numPages}페이지 로드 완료 (위험 조항 ${clauses.length}개)`;
+      } catch (err) {
+        console.error('❌ PDF 렌더링 오류:', err);
+        status.textContent = `불러오기 실패: ${err.message}`;
+      }
+    };
+
+
+
+
+
+
+
+    // postMessage 통신 (필요시 유지)
+    window.addEventListener('message', (event) => {
+      console.log('📨 postMessage 수신:', event.origin);
+      if (event.data && event.data.type === 'PDF_ANALYSIS_RESULT') {
+        console.log('✓ PDF 분석 결과 수신 (postMessage)');
+        externalData = event.data.data;
+        const viewer = document.getElementById('pdf-container');
+        viewer.innerHTML = '';
+        renderDocument(event.data.data);
+      }
+    });
+
+    window.updateAnalysisData = (data) => {
+      console.log('✓ updateAnalysisData 호출됨');
+      externalData = data;
+      const viewer = document.getElementById('pdf-container');
+      viewer.innerHTML = '';
+      renderDocument(data);
+    };
+
+    // === n8n 연동 ===
+    const WEBHOOK_URL = "https://n8n.dpgtestbed.kr/webhook-test/73f34187-b08f-48fa-960d-ba9ead6c80f7";
+
+    function showStatus(message, type = 'loading') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = `status ${type}`;
+      statusDiv.textContent = message;
+      statusDiv.style.display = 'block';
+    }
+    function hideStatus() {
+      document.getElementById('status').style.display = 'none';
+    }
+
+    // 🔴 새: LLM JSON → 뷰어용 데이터로 변환
+    function buildHighlightDataFromModelJson(modelJson) {
+      if (!modelJson) return null;
+
+      // risks 배열 또는 기존 키들 지원
+      const risks = modelJson.risks ||
+        modelJson['위험 조항 리스트'] ||
+        modelJson['위험 조항들'] ||
+        modelJson['독소 조항 리스트'] ||
+        [];
+
+      if (!Array.isArray(risks) || risks.length === 0) {
+        console.warn('⚠️ risks 배열이 비어있음');
+        return { "위험 조항 리스트": [] };
+      }
+
+      const mapped = risks.map((r, idx) => {
+        const clauseText =
+          r.clause ||
+          r['원문 조항'] ||
+          r['조항'] ||
+          r.text ||
+          '';
+
+        const riskColor =
+          (r.risk_color ||
+            r['위험도 색상'] ||
+            r['위험도'] ||
+            '').toString().toUpperCase();
+
+        const reason =
+          r.reason ||
+          r['이 조항이 왜 위험한지'] ||
+          r['이유'] ||
+          r['설명'] ||
+          '';
+
+        const easy =
+          r.easy_version ||
+          r['쉽게 풀어쓴 해석'] ||
+          '';
+
+        const summaryArr =
+          r.summary_3 ||
+          r['3줄 요약'] ||
+          [];
+
+        const descParts = [];
+        if (reason) descParts.push(`왜 위험한지: ${reason}`);
+        if (easy) descParts.push(`쉽게 풀어쓴 해석: ${easy}`);
+        if (Array.isArray(summaryArr) && summaryArr.length) {
+          const summaryStr = summaryArr
+            .map((s, i) => `${i + 1}) ${s}`)
+            .join(' ');
+          descParts.push(`3줄 요약: ${summaryStr}`);
+        }
+
+        return {
+          '조항': clauseText,
+          '위험도 색상': riskColor,
+          '설명': descParts.join('\n')
+        };
+      });
+
+      console.log('✅ buildHighlightDataFromModelJson 결과:', mapped);
+      return { "위험 조항 리스트": mapped };
+    }
+
+    // 🔴 새: n8n 응답(JSON/배열/문자열) 안전 파싱
+    function parseN8nStructuredResult(n8nResult) {
+      console.log('🔍 n8n 응답 파싱 시작:', n8nResult);
+
+      if (!n8nResult) return null;
+
+      let payload = n8nResult;
+
+      // 1) n8n이 배열로 반환하는 경우: [{ json: { output: '...' } }]
+      if (Array.isArray(payload)) {
+        const first = payload[0] || {};
+        payload = first.json || first;
+      }
+
+      // 2) payload.output 또는 payload.text가 "문자열 JSON"인 경우
+      let modelRaw = payload;
+      if (typeof payload === 'string') {
+        try {
+          modelRaw = JSON.parse(payload);
+        } catch (e) {
+          console.error('❌ 문자열 payload JSON 파싱 실패:', e);
+        }
+      } else if (typeof payload.output === 'string') {
+        try {
+          modelRaw = JSON.parse(payload.output);
+        } catch (e) {
+          console.error('❌ output JSON 파싱 실패:', e);
+        }
+      } else if (typeof payload.text === 'string') {
+        try {
+          modelRaw = JSON.parse(payload.text);
+        } catch (e) {
+          console.error('❌ text JSON 파싱 실패:', e);
+        }
+      }
+
+      // 3) risks / 위험 조항 리스트가 이미 있는 구조일 수도 있음
+      const highlightData = buildHighlightDataFromModelJson(modelRaw);
+      return highlightData;
+    }
+
+    document.getElementById("sendBtn").addEventListener("click", async () => {
+      const file = document.getElementById("pdfInput").files[0];
+      if (!file) {
+        showStatus("파일을 먼저 선택해주세요!", "error");
+        return;
+      }
+
+      const sendBtn = document.getElementById("sendBtn");
+      const pdfInput = document.getElementById("pdfInput");
+      sendBtn.disabled = true;
+      pdfInput.disabled = true;
+
+
+
+
+
+      try {
+        // 1) PDF 파일 읽기
+        showStatus("PDF 파일을 읽는 중...", "loading");
+        const buffer = await file.arrayBuffer();
+        const blob = new Blob([buffer], { type: 'application/pdf' });
+        pdfUrl = URL.createObjectURL(blob);
+
+        const fileInfoEl = document.getElementById('fileInfo');
+        fileInfoEl.innerHTML = `<strong style="color: var(--accent);">분석 파일:</strong> ${file.name}`;
+        fileInfoEl.style.display = 'block';
+
+        // 2) PDF 먼저 렌더링 (빈 하이라이트)
+        showStatus("PDF를 표시하는 중...", "loading");
+        await renderDocument(null);
+
+
+
+
+
+        
+        // 3) 텍스트 추출
+        showStatus("PDF에서 텍스트를 추출하는 중...", "loading");
+        const pdf = await pdfjsLib.getDocument({
+          data: buffer,
+          cMapUrl: CMAP_URL,
+          cMapPacked: CMAP_PACKED
+        }).promise;
+
+        let fullText = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const txt = await page.getTextContent();
+          const strings = txt.items.map(item => item.str).join(" ");
+          fullText += strings + "\n";
+        }
+        console.log("추출된 텍스트:", fullText.slice(0, 500));
+
+        // 4) n8n으로 전송
+
+
+        console.log("추출된 텍스트:", fullText.slice(0, 500));
+
+
+
+        // 3-1) 전체 텍스트만 마스킹해서 쓰기 (조항 분리 잠깐 OFF)
+        const maskedFullText = maskSensitiveInfo(fullText);
+
+        // 4) n8n으로 전송 (문서 전체)
+        showStatus("n8n으로 분석 요청 중...", "loading");
+        const res = await fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename: file.name,
+            text: maskedFullText          // ← 이제 clauses 말고 text 하나만 보냄
+          }),
+        });
+
+
+
+
+
+
+
+
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const n8nResult = await res.json();
+        console.log("n8n 응답(raw):", n8nResult);
+
+        // 5) 구조화 JSON 파싱
+        showStatus("AI 분석 결과 정리 중...", "loading");
+        const finalData = parseN8nStructuredResult(n8nResult);
+
+        if (!finalData || !finalData["위험 조항 리스트"] || finalData["위험 조항 리스트"].length === 0) {
+          showStatus("분석 완료! (위험 조항이 발견되지 않았습니다)", "success");
+          console.warn('⚠️ 위험 조항이 없거나 파싱 실패');
+        } else {
+          externalData = finalData;
+          const viewer = document.getElementById('pdf-container');
+          viewer.innerHTML = '';
+
+          showStatus("하이라이트 적용 중...", "loading");
+          await renderDocument(finalData);
+
+          const cnt = finalData["위험 조항 리스트"].length;
+          showStatus(`분석 완료! ${cnt}개 조항 하이라이트됨`, "success");
+          setTimeout(hideStatus, 3000);
+        }
+
+        document.getElementById('resetBtn').style.display = 'inline-block';
+        sendBtn.style.display = 'none';
+        pdfInput.style.display = 'none';
+
+      } catch (error) {
+        console.error("오류 발생:", error);
+        showStatus(`오류: ${error.message}`, "error");
+        sendBtn.disabled = false;
+        pdfInput.disabled = false;
+      }
+    });
+
+
+
+
+
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      location.reload();
+    });
+
+    // 부모 창에 로드 완료 알림
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'PDF_VIEWER_READY'
+      }, '*');
+    }
+    //-----------------------------------------------------------------------------------
+  </script>
+</body>
+
+</html>

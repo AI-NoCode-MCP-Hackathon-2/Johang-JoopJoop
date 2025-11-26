@@ -9,6 +9,9 @@ import { AppError } from './utils/errors';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import analysisRoutes from './routes/analysisRoutes';
+import adminRoutes from './routes/adminRoutes';
+import contactRoutes from './routes/contactRoutes';
+import chatbotRoutes from './routes/chatbotRoutes';
 
 dotenv.config();
 
@@ -23,8 +26,13 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:5173'];
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: allowedOrigins,
   credentials: true,
 }));
 
@@ -53,6 +61,9 @@ app.get('/', (_req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof AppError) {

@@ -1,19 +1,48 @@
 import React, { useState } from 'react';
-import { Mail, MessageSquare, Send, Clock, AlertCircle } from 'lucide-react';
+import { Mail, Send, Clock, AlertCircle } from 'lucide-react';
 import Reveal from './Reveal';
+import api from '../utils/api';
+
+interface FormData {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}
 
 const ContactPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState<FormData>({
+    name: '',
+    email: '',
+    subject: '서비스 이용 문의',
+    message: '',
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      const res = await api.post('/contact', formData);
+      if (res.data.success) {
+        setIsSent(true);
+        setFormData({ name: '', email: '', subject: '서비스 이용 문의', message: '' });
+      }
+    } catch (err: any) {
+      console.error('Contact submit error:', err);
+      setError(err.response?.data?.message || '문의 전송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    } finally {
       setIsSubmitting(false);
-      setIsSent(true);
-    }, 1500);
+    }
   };
 
   return (
@@ -54,10 +83,18 @@ const ContactPage: React.FC = () => {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-sm">
+                      {error}
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">이름</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
                       required
                       placeholder="홍길동"
                       className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow"
@@ -65,8 +102,11 @@ const ContactPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">이메일 주소</label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
                       required
                       placeholder="example@email.com"
                       className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow"
@@ -74,23 +114,31 @@ const ContactPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">문의 유형</label>
-                    <select className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow cursor-pointer">
-                      <option>서비스 이용 문의</option>
-                      <option>기능 제안</option>
-                      <option>오류·버그 신고</option>
-                      <option>제휴 문의</option>
-                      <option>기타</option>
+                    <select
+                      name="subject"
+                      value={formData.subject}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow cursor-pointer"
+                    >
+                      <option value="서비스 이용 문의">서비스 이용 문의</option>
+                      <option value="기능 제안">기능 제안</option>
+                      <option value="오류·버그 신고">오류·버그 신고</option>
+                      <option value="제휴 문의">제휴 문의</option>
+                      <option value="기타">기타</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">문의 내용</label>
-                    <textarea 
+                    <textarea
+                      name="message"
+                      value={formData.message}
+                      onChange={handleChange}
                       required
-                      placeholder="문의하실 내용을 자세히 적어주세요."
+                      placeholder="문의하실 내용을 자세히 적어주세요. (최소 10자)"
                       className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow min-h-[140px] resize-none"
                     ></textarea>
                   </div>
-                  <button 
+                  <button
                     type="submit"
                     disabled={isSubmitting}
                     className={`w-full py-4 bg-slate-900 text-white font-bold rounded-xl shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}

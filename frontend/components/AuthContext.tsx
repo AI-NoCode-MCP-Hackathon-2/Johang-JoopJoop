@@ -34,6 +34,15 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Helper functions for social login
+const determineRole = (email: string): UserRole => {
+  return email.includes('admin') ? 'admin' : 'user';
+};
+
+const getTodayStr = (): string => {
+  return new Date().toISOString().split('T')[0];
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
@@ -168,7 +177,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       lastCheckDate: getTodayStr(),
     };
 
-    saveUser(mockUser);
+    setUser(mockUser);
     setIsAuthLoading(false);
   };
 

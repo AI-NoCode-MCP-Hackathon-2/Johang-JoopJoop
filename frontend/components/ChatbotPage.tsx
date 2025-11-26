@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Info, AlertCircle, HelpCircle, MessageSquare } from 'lucide-react';
+import { Bot, Send, Info, AlertCircle, HelpCircle } from 'lucide-react';
 import Reveal from './Reveal';
+import api from '../utils/api';
 
 type Role = 'user' | 'bot';
 
@@ -23,16 +24,19 @@ const ChatbotPage: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
     const trimmed = inputValue.trim();
@@ -49,34 +53,37 @@ const ChatbotPage: React.FC = () => {
     setInputValue('');
     setIsTyping(true);
 
-    // Mock Response Logic
-    setTimeout(() => {
-      let responseText = "좋은 질문입니다. 현재 데모 버전이라 실제 계약서 내용을 직접 확인해 드릴 수는 없지만, 일반적인 내용을 안내해 드릴게요.";
+    try {
+      const conversationHistory = messages.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'bot',
+        content: msg.content,
+      }));
 
-      if (trimmed.includes("주휴수당")) {
-        responseText = "주휴수당이란 1주 동안 규정된 근무일수를 개근한 근로자에게 지급되는 유급휴일에 대한 수당입니다. 주 15시간 이상 근무 시 반드시 지급되어야 합니다.";
-      } else if (trimmed.includes("포괄임금")) {
-        responseText = "포괄임금제란 실제 근로시간과 관계없이 연장·야간·휴일근로수당 등을 급여에 미리 포함하여 지급하는 계약 형태입니다. 이 경우에도 실제 근로시간에 따른 수당 합계가 포괄임금보다 많다면 차액을 지급해야 합니다.";
-      } else if (trimmed.includes("수습") || trimmed.includes("수습기간")) {
-        responseText = "수습기간은 근로자의 업무 적격성을 판단하기 위한 기간으로, 보통 3개월 이내로 설정합니다. 1년 이상 계약 시 수습기간(3개월 이내) 동안 최저임금의 90% 지급이 가능하지만, 1년 미만 계약이라면 100%를 지급해야 합니다.";
-      } else if (trimmed.includes("퇴직금")) {
-        responseText = "퇴직금은 1년 이상 계속 근로한 근로자가 퇴직할 때 지급받는 급여입니다. 주 15시간 이상 근무해야 하며, 퇴직 전 3개월간의 평균임금을 기준으로 산정됩니다.";
-      } else if (trimmed.includes("해고") || trimmed.includes("권고사직")) {
-        responseText = "사용자는 정당한 이유 없이 근로자를 해고할 수 없으며, 해고 시에는 30일 전에 예고하거나 30일분 이상의 통상임금을 지급해야 합니다. 부당해고가 의심된다면 노동위원회에 구제 신청을 할 수 있습니다.";
-      }
-
-      responseText += "\n\n(※ 본 내용은 참고용이며, 정확한 판단을 위해서는 노무사·변호사 등 전문가와 상의해 주세요.)";
+      const response = await api.post('/chatbot', {
+        message: trimmed,
+        conversationHistory,
+      });
 
       const newBotMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'bot',
-        content: responseText,
+        content: response.data.data.message,
         timestamp: Date.now(),
       };
 
       setMessages((prev) => [...prev, newBotMsg]);
+    } catch (error) {
+      console.error('Chatbot error:', error);
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'bot',
+        content: '죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
-    }, 800); // Simulate delay
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -94,15 +101,15 @@ const ChatbotPage: React.FC = () => {
         <Reveal>
           <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm h-full flex flex-col">
             <div className="mb-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full mb-4">
-                <AlertCircle className="w-3 h-3" /> 데모 버전
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-teal-100 text-teal-800 text-xs font-bold rounded-full mb-4">
+                <Bot className="w-3 h-3" /> AI 상담
               </div>
               <h2 className="text-3xl font-display font-bold text-slate-900 mb-4">
                 조항줍줍 챗봇
               </h2>
               <p className="text-slate-600 leading-relaxed mb-6">
                 근로계약서와 노동 관련 기본 개념을 쉽고 빠르게 물어보세요. <br className="hidden xl:block" />
-                어려운 법률 용어도 친절하게 설명해 드립니다.
+                AI가 어려운 법률 용어도 친절하게 설명해 드립니다.
               </p>
             </div>
 
@@ -155,7 +162,7 @@ const ChatbotPage: React.FC = () => {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#FDFCF8]">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#FDFCF8]">
               {messages.map((msg) => (
                 <div
                   key={msg.id}

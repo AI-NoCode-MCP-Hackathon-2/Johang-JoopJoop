@@ -1,42 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Reveal from './Reveal';
-import { Users, FileText, AlertOctagon, CheckCircle2, BarChart3, Shield, Clock, Zap, TrendingUp, Eye, MousePointerClick, Activity } from 'lucide-react';
+import { Users, FileText, AlertOctagon, BarChart3, Shield, Clock, Zap, TrendingUp, Eye, MousePointerClick, Activity, Loader2 } from 'lucide-react';
+import api from '../utils/api';
 
-interface MockUser {
+interface UserData {
   id: string;
   name: string;
   email: string;
   role: 'user' | 'admin';
-  createdAt: string;
-  status: 'Active' | 'Blocked';
+  provider: string;
+  remaining_checks_today: number;
+  created_at: string;
 }
 
-interface MockAnalysis {
+interface AnalysisData {
   id: string;
-  userName: string;
-  contractType: string;
-  riskHigh: number;
-  riskMedium: number;
-  createdAt: string;
+  user_id: string;
+  user_name: string;
+  file_name: string;
+  title: string;
+  risk_level: 'low' | 'medium' | 'high';
+  created_at: string;
 }
 
-interface MockReport {
+interface ContactData {
   id: string;
-  type: string;
-  userName: string;
-  content: string;
-  createdAt: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
   status: 'Open' | 'In Progress' | 'Resolved';
+  created_at: string;
+}
+
+interface StatsData {
+  totalUsers: number;
+  newUsersToday: number;
+  totalAnalyses: number;
+  analysesToday: number;
+  openReports: number;
+}
+
+interface RiskStats {
+  low: number;
+  medium: number;
+  high: number;
 }
 
 const AdminDashboardPage: React.FC = () => {
-  const metrics = {
-    totalUsers: 1240,
-    newUsersToday: 15,
-    totalAnalyses: 8540,
-    analysesToday: 42,
-    openReports: 5,
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [metrics, setMetrics] = useState<StatsData>({
+    totalUsers: 0,
+    newUsersToday: 0,
+    totalAnalyses: 0,
+    analysesToday: 0,
+    openReports: 0,
+  });
+
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [analyses, setAnalyses] = useState<AnalysisData[]>([]);
+  const [riskStats, setRiskStats] = useState<RiskStats>({ low: 0, medium: 0, high: 0 });
+  const [contacts, setContacts] = useState<ContactData[]>([]);
 
   const apiUsageMetrics = {
     geminiApiCalls: 8542,
@@ -68,30 +94,92 @@ const AdminDashboardPage: React.FC = () => {
     ],
   };
 
-  const mockUsers: MockUser[] = [
-    { id: 'u1', name: '김철수', email: 'chulsoo@example.com', role: 'user', createdAt: '2024-10-01', status: 'Active' },
-    { id: 'u2', name: '관리자', email: 'admin@johangjoopjoop.com', role: 'admin', createdAt: '2024-09-15', status: 'Active' },
-    { id: 'u3', name: '이영희', email: 'younghee@test.com', role: 'user', createdAt: '2024-10-05', status: 'Active' },
-    { id: 'u4', name: '박민수', email: 'minsoo@spam.com', role: 'user', createdAt: '2024-10-12', status: 'Blocked' },
-    { id: 'u5', name: '최지은', email: 'jieun@demo.net', role: 'user', createdAt: '2024-10-20', status: 'Active' },
-  ];
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const mockAnalyses: MockAnalysis[] = [
-    { id: 'A-1023', userName: '김철수', contractType: '아르바이트', riskHigh: 2, riskMedium: 1, createdAt: '2024-10-26 14:20' },
-    { id: 'A-1022', userName: '이영희', contractType: '정규직', riskHigh: 0, riskMedium: 3, createdAt: '2024-10-26 13:15' },
-    { id: 'A-1021', userName: '최지은', contractType: '인턴', riskHigh: 1, riskMedium: 0, createdAt: '2024-10-26 11:45' },
-    { id: 'A-1020', userName: '익명', contractType: '연봉계약', riskHigh: 0, riskMedium: 0, createdAt: '2024-10-26 09:30' },
-  ];
+        const [statsRes, usersRes, analysesRes, contactsRes] = await Promise.all([
+          api.get('/admin/stats'),
+          api.get('/admin/users?limit=10'),
+          api.get('/admin/analyses?limit=10'),
+          api.get('/admin/contacts?limit=50'),
+        ]);
 
-  const [reports, setReports] = useState<MockReport[]>([
-    { id: 'R-001', type: '서비스 신고', userName: '박민수', content: '분석 결과가 너무 느립니다.', createdAt: '2024-10-25', status: 'Open' },
-    { id: 'R-002', type: '오류 제보', userName: '김철수', content: '로그인이 가끔 안 됩니다.', createdAt: '2024-10-24', status: 'In Progress' },
-    { id: 'R-003', type: '기타', userName: '이영희', content: '환불 요청합니다.', createdAt: '2024-10-23', status: 'Resolved' },
-  ]);
+        if (statsRes.data.success) {
+          setMetrics(statsRes.data.data);
+        }
 
-  const handleStatusChange = (id: string, newStatus: MockReport['status']) => {
-    setReports(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+        if (usersRes.data.success) {
+          setUsers(usersRes.data.data.users);
+        }
+
+        if (analysesRes.data.success) {
+          setAnalyses(analysesRes.data.data.analyses);
+          setRiskStats(analysesRes.data.data.riskStats);
+        }
+
+        if (contactsRes.data.success) {
+          setContacts(contactsRes.data.data.contacts);
+        }
+      } catch (err: any) {
+        console.error('Admin data fetch error:', err);
+        setError(err.response?.data?.message || '데이터를 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdminData();
+  }, []);
+
+  const handleStatusChange = async (id: string, newStatus: ContactData['status']) => {
+    try {
+      const res = await api.patch(`/admin/contacts/${id}/status`, { status: newStatus });
+      if (res.data.success) {
+        setContacts(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
+      }
+    } catch (err) {
+      console.error('Status update failed:', err);
+    }
   };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleString('ko-KR', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <section className="py-24 bg-[#FDFCF8] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-teal-600 mx-auto mb-4" />
+          <p className="text-slate-600">데이터를 불러오는 중...</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="py-24 bg-[#FDFCF8] min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertOctagon className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-bold mb-2">오류가 발생했습니다</p>
+          <p className="text-slate-600">{error}</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-24 bg-[#FDFCF8] min-h-screen">
@@ -159,19 +247,23 @@ const AdminDashboardPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {mockAnalyses.map((item) => (
+                    {analyses.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-4 py-3 font-mono text-slate-500">{item.id}</td>
-                        <td className="px-4 py-3 font-bold text-slate-700">{item.userName}</td>
+                        <td className="px-4 py-3 font-mono text-slate-500">{item.id.slice(0, 8)}</td>
+                        <td className="px-4 py-3 font-bold text-slate-700">{item.user_name || '익명'}</td>
                         <td className="px-4 py-3">
-                          <span className="px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs">{item.contractType}</span>
+                          <span className="px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs">{item.title || item.file_name}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-red-500 font-bold">{item.riskHigh}</span>
-                          <span className="text-slate-300 mx-1">/</span>
-                          <span className="text-orange-500 font-bold">{item.riskMedium}</span>
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${
+                            item.risk_level === 'high' ? 'bg-red-100 text-red-600' :
+                            item.risk_level === 'medium' ? 'bg-orange-100 text-orange-600' :
+                            'bg-green-100 text-green-600'
+                          }`}>
+                            {item.risk_level === 'high' ? '위험' : item.risk_level === 'medium' ? '주의' : '양호'}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-slate-400 text-xs">{item.createdAt}</td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{formatDateTime(item.created_at)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -198,11 +290,11 @@ const AdminDashboardPage: React.FC = () => {
                       <th className="px-4 py-3">이메일</th>
                       <th className="px-4 py-3">권한</th>
                       <th className="px-4 py-3">가입일</th>
-                      <th className="px-4 py-3 rounded-tr-lg">상태</th>
+                      <th className="px-4 py-3 rounded-tr-lg">가입방식</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {mockUsers.map((u) => (
+                    {users.map((u) => (
                       <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-4 py-3 font-bold text-slate-700">{u.name}</td>
                         <td className="px-4 py-3 text-slate-500">{u.email}</td>
@@ -211,11 +303,9 @@ const AdminDashboardPage: React.FC = () => {
                             ? <span className="text-indigo-600 font-bold text-xs bg-indigo-50 px-2 py-1 rounded">ADMIN</span>
                             : <span className="text-slate-500 text-xs">USER</span>}
                         </td>
-                        <td className="px-4 py-3 text-slate-400 text-xs">{u.createdAt}</td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(u.created_at)}</td>
                         <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-1 rounded font-medium ${u.status === 'Active' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                            {u.status}
-                          </span>
+                          <span className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600">{u.provider}</span>
                         </td>
                       </tr>
                     ))}
@@ -375,29 +465,32 @@ const AdminDashboardPage: React.FC = () => {
                   <AlertOctagon className="w-5 h-5 text-red-400" />
                   신고 및 문의 관리
                 </h3>
-                <p className="text-xs text-slate-400">※ 상태 변경은 로컬 데모에서만 적용됩니다.</p>
+                <span className="text-xs bg-red-50 px-2 py-1 rounded text-red-600 font-medium">
+                  미처리 {contacts.filter(c => c.status === 'Open').length}건
+                </span>
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {reports.map((report) => (
-                  <div key={report.id} className="bg-[#FDFCF8] border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-shadow">
+                {contacts.map((contact) => (
+                  <div key={contact.id} className="bg-[#FDFCF8] border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-3">
-                      <span className="bg-slate-200 text-slate-600 px-2 py-1 rounded text-[10px] font-bold">{report.type}</span>
-                      <span className="text-xs text-slate-400">{report.createdAt}</span>
+                      <span className="bg-slate-200 text-slate-600 px-2 py-1 rounded text-[10px] font-bold">{contact.subject}</span>
+                      <span className="text-xs text-slate-400">{formatDate(contact.created_at)}</span>
                     </div>
-                    <h4 className="font-bold text-slate-800 mb-1">{report.userName}</h4>
-                    <p className="text-sm text-slate-600 mb-4 line-clamp-2 h-10">{report.content}</p>
+                    <h4 className="font-bold text-slate-800 mb-1">{contact.name}</h4>
+                    <p className="text-xs text-slate-500 mb-2">{contact.email}</p>
+                    <p className="text-sm text-slate-600 mb-4 line-clamp-2 h-10">{contact.message}</p>
 
                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                       <span className={`text-xs font-bold px-2 py-1 rounded ${
-                        report.status === 'Open' ? 'bg-red-100 text-red-600' :
-                        report.status === 'In Progress' ? 'bg-orange-100 text-orange-600' :
+                        contact.status === 'Open' ? 'bg-red-100 text-red-600' :
+                        contact.status === 'In Progress' ? 'bg-orange-100 text-orange-600' :
                         'bg-green-100 text-green-600'
                       }`}>
-                        {report.status}
+                        {contact.status === 'Open' ? '열림' : contact.status === 'In Progress' ? '처리 중' : '완료'}
                       </span>
                       <select
-                        value={report.status}
-                        onChange={(e) => handleStatusChange(report.id, e.target.value as any)}
+                        value={contact.status}
+                        onChange={(e) => handleStatusChange(contact.id, e.target.value as ContactData['status'])}
                         className="text-xs border border-slate-300 rounded-lg p-1 bg-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
                       >
                         <option value="Open">열림</option>
@@ -413,7 +506,7 @@ const AdminDashboardPage: React.FC = () => {
 
         {/* Footer Notice */}
         <div className="text-center text-xs text-slate-400 mt-12 pt-8 border-t border-slate-200">
-          관리자 대시보드의 모든 수치는 데모용 예시 데이터입니다. 실제 운영 환경에서는 별도의 관리자 백오피스와 데이터베이스 연동이 필요합니다.
+          데이터는 MySQL 데이터베이스에서 실시간으로 불러옵니다. (Gemini API 및 GA4 메트릭은 예시 데이터입니다.)
         </div>
       </div>
     </section>

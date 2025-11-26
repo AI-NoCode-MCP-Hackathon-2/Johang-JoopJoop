@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, Menu, X, User as UserIcon, LogOut, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Menu, X, User as UserIcon, LogOut, ChevronDown, ShieldCheck } from 'lucide-react';
 import { Page } from '../App';
 import { useAuth } from './AuthContext';
 import AuthModal from './AuthModal';
@@ -82,16 +82,15 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
         <div className="container mx-auto px-6 lg:px-12">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <button 
+            <button
               onClick={() => handleNavClick('home')}
-              className="flex items-center gap-2 z-50 relative group focus:outline-none"
+              className="flex items-center z-50 relative group focus:outline-none -mt-1.5"
             >
-              <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
-                <FileText className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-display font-bold text-xl tracking-tight text-slate-900">
-                조항줍줍
-              </span>
+              <img
+                src="/logo.png"
+                alt="조항줍줍"
+                className="h-8 object-contain group-hover:scale-105 transition-transform"
+              />
             </button>
 
             {/* Desktop Navigation */}
