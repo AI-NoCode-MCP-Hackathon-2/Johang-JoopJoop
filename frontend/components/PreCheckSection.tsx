@@ -92,14 +92,14 @@ const SAMPLE_CASES = [
 ];
 
 // PDF.js 워커 설정
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js`;
 
 // PDF 텍스트 추출 함수
 const extractTextFromPDF = async (file: File): Promise<string> => {
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({
     data: buffer,
-    cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+    cMapUrl: `https://unpkg.com/pdfjs-dist@3.11.174/cmaps/`,
     cMapPacked: true,
   }).promise;
 
