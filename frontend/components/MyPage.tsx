@@ -65,7 +65,10 @@ const MyPage: React.FC = () => {
 
   const handleViewDetail = (recordId: string) => {
     // 분석 결과 페이지로 이동 (URL에 분석 ID 포함)
-    window.location.hash = `#/check?analysisId=${recordId}`;
+    const targetUrl = `/check?analysisId=${recordId}`;
+    console.log('상세보기 클릭 - 이동할 URL:', targetUrl);
+    console.log('분석 ID:', recordId);
+    window.location.hash = targetUrl;
   };
 
   const handleCloseDetailModal = () => {
