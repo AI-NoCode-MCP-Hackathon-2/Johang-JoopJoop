@@ -814,7 +814,7 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
                           <p className="text-xs leading-relaxed" style={{ margin: '6px 0 8px', color: '#cbd5e1', fontSize: '13px', lineHeight: '1.4' }}>
                             {clause.easyExplanation}
                           </p>
-                          {clause.summaryBullets && clause.summaryBullets.length > 0 && (
+                          {clause.summaryBullets && Array.isArray(clause.summaryBullets) && clause.summaryBullets.length > 0 && (
                             <ul className="space-y-1 mt-2">
                               {clause.summaryBullets.map((bullet: string, bulletIdx: number) => (
                                 <li key={bulletIdx} className="text-xs flex items-start gap-2" style={{ color: '#94a3b8' }}>
