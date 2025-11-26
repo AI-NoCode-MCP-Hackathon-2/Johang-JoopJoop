@@ -34,10 +34,10 @@ const ExpertSupportPage: React.FC = () => {
     },
     {
       id: 2,
-      name: '고용노동부 청년·알바 상담 창구',
-      contact: '전화: 1350 → 3번 선택',
-      description: '청년·아르바이트 근로자 전용 상담',
-      url: 'https://www.moel.go.kr/policy/policyinfo/lobar/list.do',
+      name: '고용노동부 청년 정책',
+      contact: '전화: 1350',
+      description: '청년 일자리 정책 및 취업 지원 안내',
+      url: 'https://www.moel.go.kr/policy/policyinfo/young/list.do',
     },
     {
       id: 3,
