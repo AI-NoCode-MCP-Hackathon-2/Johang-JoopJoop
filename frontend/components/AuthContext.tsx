@@ -60,9 +60,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             id: data.data.user.id,
             name: data.data.user.name,
             email: data.data.user.email,
-            provider: data.data.user.provider,
+            provider: data.data.user.provider || 'email',
             role: data.data.user.role,
-            remainingChecksToday: data.data.user.remainingChecksToday,
+            remainingChecksToday: data.data.user.remaining_checks_today ?? data.data.user.remainingChecksToday ?? 5,
             lastCheckDate: data.data.user.lastCheckDate,
           };
           setUser(userData);
@@ -105,9 +105,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         id: data.data.user.id,
         name: data.data.user.name,
         email: data.data.user.email,
-        provider: data.data.user.provider,
+        provider: data.data.user.provider || 'email',
         role: data.data.user.role,
-        remainingChecksToday: data.data.user.remainingChecksToday,
+        remainingChecksToday: data.data.user.remaining_checks_today ?? data.data.user.remainingChecksToday ?? 5,
         lastCheckDate: data.data.user.lastCheckDate,
       };
 
@@ -131,9 +131,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         id: data.data.user.id,
         name: data.data.user.name,
         email: data.data.user.email,
-        provider: data.data.user.provider,
+        provider: data.data.user.provider || 'email',
         role: data.data.user.role,
-        remainingChecksToday: data.data.user.remainingChecksToday,
+        remainingChecksToday: data.data.user.remaining_checks_today ?? data.data.user.remainingChecksToday ?? 5,
         lastCheckDate: data.data.user.lastCheckDate,
       };
 

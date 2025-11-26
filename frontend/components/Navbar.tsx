@@ -147,7 +147,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
                     <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-2 animate-in fade-in zoom-in-95 duration-200">
                       <div className="px-4 py-2 border-b border-slate-50">
                         <p className="text-xs text-slate-500">잔여 점검 횟수</p>
-                        <p className="font-bold text-teal-600">{user.remainingChecksToday}회</p>
+                        <p className="font-bold text-teal-600">{user.remainingChecksToday ?? 0}회</p>
                       </div>
                       <button
                         onClick={() => {
@@ -241,7 +241,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate }) => {
                     </div>
                   </div>
                   <button className="w-full text-left py-3 text-slate-700 font-medium border-b border-slate-50">
-                    잔여 점검 횟수: <span className="text-teal-600 font-bold">{user.remainingChecksToday}회</span>
+                    잔여 점검 횟수: <span className="text-teal-600 font-bold">{user.remainingChecksToday ?? 0}회</span>
                   </button>
                   <button
                     onClick={() => {

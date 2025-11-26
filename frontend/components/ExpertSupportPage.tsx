@@ -36,8 +36,8 @@ const ExpertSupportPage: React.FC = () => {
       id: 2,
       name: '고용노동부 청년 정책',
       contact: '전화: 1350',
-      description: '청년 일자리 정책 및 취업 지원 안내',
-      url: 'https://www.moel.go.kr/policy/policyinfo/young/list.do',
+      description: '메뉴 > 정책정보 > 청년에서 청년 일자리 정책 확인',
+      url: 'https://www.moel.go.kr',
     },
     {
       id: 3,

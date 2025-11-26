@@ -279,7 +279,7 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
                 <div className="mt-6 inline-flex items-center gap-2 bg-slate-800/50 px-4 py-2 rounded-full border border-slate-700">
                   <span className={`w-2 h-2 rounded-full animate-pulse ${user && user.remainingChecksToday > 0 ? 'bg-green-400' : 'bg-red-500'}`}></span>
                   <span className="text-sm font-medium text-slate-300">
-                    오늘 남은 점검 횟수: <span className={`font-bold ${user && user.remainingChecksToday > 0 ? 'text-teal-400' : 'text-red-400'}`}>{user?.remainingChecksToday}</span> / 5
+                    오늘 남은 점검 횟수: <span className={`font-bold ${user && user.remainingChecksToday > 0 ? 'text-teal-400' : 'text-red-400'}`}>{user?.remainingChecksToday ?? 0}</span> / 5
                   </span>
                 </div>
               ) : (

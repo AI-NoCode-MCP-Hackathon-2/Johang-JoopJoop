@@ -139,16 +139,16 @@ const MyPage: React.FC = () => {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-bold text-slate-700">오늘 남은 점검 횟수</span>
                     <div className="text-right">
-                      <span className={`text-sm font-bold ${user.remainingChecksToday > 0 ? 'text-teal-600' : 'text-red-500'}`}>
-                        {user.remainingChecksToday} / 5
+                      <span className={`text-sm font-bold ${(user.remainingChecksToday ?? 0) > 0 ? 'text-teal-600' : 'text-red-500'}`}>
+                        {user.remainingChecksToday ?? 0} / 5
                       </span>
                       <div className="text-[10px] text-slate-400 font-normal mt-0.5">매일 0시 초기화</div>
                     </div>
                   </div>
                   <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
                     <div
-                      className={`h-2.5 rounded-full transition-all duration-500 ${user.remainingChecksToday > 0 ? 'bg-teal-500' : 'bg-red-400'}`}
-                      style={{ width: `${(user.remainingChecksToday / 5) * 100}%` }}
+                      className={`h-2.5 rounded-full transition-all duration-500 ${(user.remainingChecksToday ?? 0) > 0 ? 'bg-teal-500' : 'bg-red-400'}`}
+                      style={{ width: `${((user.remainingChecksToday ?? 0) / 5) * 100}%` }}
                     ></div>
                   </div>
                 </div>
