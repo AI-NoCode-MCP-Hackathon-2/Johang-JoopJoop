@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Mail, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Mail, AlertCircle, ArrowLeft, CheckCircle, Check } from 'lucide-react';
 import { useAuth, AuthProviderType } from './AuthContext';
 
 type AuthMode = 'login' | 'signup' | 'reset';
@@ -12,6 +12,15 @@ interface AuthModalProps {
   onAuthSuccess?: (action: 'login' | 'signup' | 'provider') => void;
 }
 
+// 비밀번호 유효성 검사 함수
+const validatePassword = (pwd: string) => ({
+  minLength: pwd.length >= 8,
+  hasUpperCase: /[A-Z]/.test(pwd),
+  hasLowerCase: /[a-z]/.test(pwd),
+  hasNumber: /\d/.test(pwd),
+  hasSpecialChar: /[@$!%*?&]/.test(pwd),
+});
+
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, mode, onClose, onSwitchMode, onAuthSuccess }) => {
   const { loginWithEmail, signupWithEmail, loginWithProvider, sendPasswordResetEmail, isAuthLoading } = useAuth();
 
@@ -21,6 +30,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, mode, onClose, onSwitchMo
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // 비밀번호 유효성 상태
+  const passwordValidation = useMemo(() => validatePassword(password), [password]);
+  const isPasswordValid = useMemo(() =>
+    Object.values(passwordValidation).every(Boolean),
+    [passwordValidation]
+  );
 
   // Reset form state when modal opens or mode changes
   useEffect(() => {
@@ -53,6 +69,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, mode, onClose, onSwitchMo
           setError('모든 항목을 입력해 주세요.');
           return;
         }
+        if (!isPasswordValid) {
+          setError('비밀번호가 요구 조건을 충족하지 않습니다.');
+          return;
+        }
         await signupWithEmail(name, email, password);
         if (onAuthSuccess) onAuthSuccess('signup');
         onClose();
@@ -65,8 +85,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, mode, onClose, onSwitchMo
         if (onAuthSuccess) onAuthSuccess('login');
         onClose();
       }
-    } catch (err) {
-      setError('처리 중 오류가 발생했습니다.');
+    } catch (err: any) {
+      const errorMessage = err?.message || '처리 중 오류가 발생했습니다.';
+      setError(errorMessage);
     }
   };
 
@@ -174,9 +195,37 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, mode, onClose, onSwitchMo
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="영문, 숫자 포함 8자 이상"
+                  placeholder="영문 대/소문자, 숫자, 특수문자 포함 8자 이상"
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow"
                 />
+                {/* 회원가입 모드일 때 비밀번호 요구사항 체크리스트 표시 */}
+                {mode === 'signup' && password && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <p className="text-xs font-medium text-slate-600 mb-2">비밀번호 요구사항</p>
+                    <div className="grid grid-cols-2 gap-1.5 text-xs">
+                      <div className={`flex items-center gap-1.5 ${passwordValidation.minLength ? 'text-teal-600' : 'text-slate-400'}`}>
+                        <Check className={`w-3.5 h-3.5 ${passwordValidation.minLength ? 'text-teal-500' : 'text-slate-300'}`} />
+                        <span>8자 이상</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${passwordValidation.hasUpperCase ? 'text-teal-600' : 'text-slate-400'}`}>
+                        <Check className={`w-3.5 h-3.5 ${passwordValidation.hasUpperCase ? 'text-teal-500' : 'text-slate-300'}`} />
+                        <span>대문자 포함</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${passwordValidation.hasLowerCase ? 'text-teal-600' : 'text-slate-400'}`}>
+                        <Check className={`w-3.5 h-3.5 ${passwordValidation.hasLowerCase ? 'text-teal-500' : 'text-slate-300'}`} />
+                        <span>소문자 포함</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${passwordValidation.hasNumber ? 'text-teal-600' : 'text-slate-400'}`}>
+                        <Check className={`w-3.5 h-3.5 ${passwordValidation.hasNumber ? 'text-teal-500' : 'text-slate-300'}`} />
+                        <span>숫자 포함</span>
+                      </div>
+                      <div className={`col-span-2 flex items-center gap-1.5 ${passwordValidation.hasSpecialChar ? 'text-teal-600' : 'text-slate-400'}`}>
+                        <Check className={`w-3.5 h-3.5 ${passwordValidation.hasSpecialChar ? 'text-teal-500' : 'text-slate-300'}`} />
+                        <span>특수문자 포함 (@$!%*?&)</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
