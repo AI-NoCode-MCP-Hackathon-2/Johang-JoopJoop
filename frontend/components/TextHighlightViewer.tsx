@@ -170,8 +170,6 @@ const TextHighlightViewer: React.FC<TextHighlightViewerProps> = ({
       <style>{`
         .text-highlight-viewer {
           width: 100%;
-          height: 100%;
-          overflow-y: auto;
         }
 
         .text-container {
