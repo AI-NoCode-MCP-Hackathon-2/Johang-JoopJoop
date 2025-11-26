@@ -811,9 +811,19 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
                             <span style={{ color: 'var(--muted)', fontSize: '12px' }}>#{idx + 1}</span>
                           </div>
                           <h4 style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: 'bold' }}>{clause.title || '조항 없음'}</h4>
-                          <p className="text-xs leading-relaxed" style={{ margin: '6px 0 0', color: '#cbd5e1', fontSize: '13px', lineHeight: '1.4' }}>
+                          <p className="text-xs leading-relaxed" style={{ margin: '6px 0 8px', color: '#cbd5e1', fontSize: '13px', lineHeight: '1.4' }}>
                             {clause.easyExplanation}
                           </p>
+                          {clause.summaryBullets && clause.summaryBullets.length > 0 && (
+                            <ul className="space-y-1 mt-2">
+                              {clause.summaryBullets.map((bullet: string, bulletIdx: number) => (
+                                <li key={bulletIdx} className="text-xs flex items-start gap-2" style={{ color: '#94a3b8' }}>
+                                  <span style={{ color: color.border, flexShrink: 0 }}>•</span>
+                                  <span>{bullet}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </article>
                       );
                     })}
