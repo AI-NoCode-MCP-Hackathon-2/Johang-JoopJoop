@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { useAnalysisHistory, RiskLevel } from './AnalysisHistoryContext';
 import Reveal from './Reveal';
-import { User, ShieldAlert, FileText, Clock, Trash2, LogIn, Save, Lock, AlertTriangle, UserX, AlertCircle } from 'lucide-react';
+import { User, ShieldAlert, FileText, Clock, Trash2, LogIn, Save, Lock, AlertTriangle, UserX, AlertCircle, Settings, History } from 'lucide-react';
+
+type TabType = 'account' | 'history';
 
 const MyPage: React.FC = () => {
   const { user, isAuthenticated, updateProfile, changePassword, deleteAccount, isAuthLoading } = useAuth();
   const { records, clearRecordsForCurrentUser } = useAnalysisHistory();
 
+  const [activeTab, setActiveTab] = useState<TabType>('history');
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -157,18 +160,61 @@ const MyPage: React.FC = () => {
           </div>
         </Reveal>
 
+        {/* Tab Navigation */}
         <Reveal delay={50}>
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-2">
+            <div className="flex">
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-2xl font-bold text-sm transition-all ${
+                  activeTab === 'history'
+                    ? 'bg-teal-600 text-white shadow-md'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                분석 이력
+                {records.length > 0 && (
+                  <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${
+                    activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-teal-100 text-teal-700'
+                  }`}>
+                    {records.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('account')}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-2xl font-bold text-sm transition-all ${
+                  activeTab === 'account'
+                    ? 'bg-teal-600 text-white shadow-md'
+                    : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                계정 관리
+              </button>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* Account Management Tab */}
+        {activeTab === 'account' && (
+        <Reveal delay={100}>
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
             <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-6">
               <User className="w-5 h-5 text-teal-600" />
               계정 관리
             </h3>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold text-slate-600 uppercase tracking-wider">프로필 수정</h4>
+            <div className="space-y-8">
+              {/* 프로필 수정 섹션 */}
+              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                  <User className="w-4 h-4 text-teal-600" />
+                  프로필 수정
+                </h4>
                 {profileMsg && (
-                  <div className={`p-3 rounded-xl flex items-start gap-2 text-sm ${
+                  <div className={`p-3 rounded-xl flex items-start gap-2 text-sm mb-4 ${
                     profileMsg.type === 'error'
                       ? 'bg-red-50 border border-red-100 text-red-600'
                       : 'bg-teal-50 border border-teal-100 text-teal-600'
@@ -177,33 +223,35 @@ const MyPage: React.FC = () => {
                     <span>{profileMsg.text}</span>
                   </div>
                 )}
-                <form onSubmit={handleUpdateProfile} className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1.5">이름</label>
-                    <input
-                      type="text"
-                      value={profileName}
-                      onChange={(e) => setProfileName(e.target.value)}
-                      placeholder={user.name}
-                      disabled={isAuthLoading}
-                      className="w-full px-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 mb-1.5">이메일</label>
-                    <input
-                      type="email"
-                      value={profileEmail}
-                      onChange={(e) => setProfileEmail(e.target.value)}
-                      placeholder={user.email}
-                      disabled={isAuthLoading}
-                      className="w-full px-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
-                    />
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5">이름</label>
+                      <input
+                        type="text"
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        placeholder={user.name}
+                        disabled={isAuthLoading}
+                        className="w-full px-4 py-3 text-sm rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5">이메일</label>
+                      <input
+                        type="email"
+                        value={profileEmail}
+                        onChange={(e) => setProfileEmail(e.target.value)}
+                        placeholder={user.email}
+                        disabled={isAuthLoading}
+                        className="w-full px-4 py-3 text-sm rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
+                      />
+                    </div>
                   </div>
                   <button
                     type="submit"
                     disabled={isAuthLoading}
-                    className="w-full py-2.5 bg-teal-600 text-white text-sm font-bold rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="px-6 py-2.5 bg-teal-600 text-white text-sm font-bold rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isAuthLoading ? (
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -215,11 +263,15 @@ const MyPage: React.FC = () => {
                 </form>
               </div>
 
+              {/* 비밀번호 변경 섹션 */}
               {user.provider === 'email' && (
-                <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-slate-600 uppercase tracking-wider">비밀번호 변경</h4>
+                <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-teal-600" />
+                    비밀번호 변경
+                  </h4>
                   {pwdMsg && (
-                    <div className={`p-3 rounded-xl flex items-start gap-2 text-sm ${
+                    <div className={`p-3 rounded-xl flex items-start gap-2 text-sm mb-4 ${
                       pwdMsg.type === 'error'
                         ? 'bg-red-50 border border-red-100 text-red-600'
                         : 'bg-teal-50 border border-teal-100 text-teal-600'
@@ -228,44 +280,46 @@ const MyPage: React.FC = () => {
                       <span>{pwdMsg.text}</span>
                     </div>
                   )}
-                  <form onSubmit={handleChangePassword} className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1.5">현재 비밀번호</label>
-                      <input
-                        type="password"
-                        value={currentPwd}
-                        onChange={(e) => setCurrentPwd(e.target.value)}
-                        placeholder="현재 비밀번호"
-                        disabled={isAuthLoading}
-                        className="w-full px-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1.5">새 비밀번호</label>
-                      <input
-                        type="password"
-                        value={newPwd}
-                        onChange={(e) => setNewPwd(e.target.value)}
-                        placeholder="새 비밀번호"
-                        disabled={isAuthLoading}
-                        className="w-full px-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1.5">새 비밀번호 확인</label>
-                      <input
-                        type="password"
-                        value={confirmPwd}
-                        onChange={(e) => setConfirmPwd(e.target.value)}
-                        placeholder="새 비밀번호 확인"
-                        disabled={isAuthLoading}
-                        className="w-full px-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
-                      />
+                  <form onSubmit={handleChangePassword} className="space-y-4">
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">현재 비밀번호</label>
+                        <input
+                          type="password"
+                          value={currentPwd}
+                          onChange={(e) => setCurrentPwd(e.target.value)}
+                          placeholder="현재 비밀번호"
+                          disabled={isAuthLoading}
+                          className="w-full px-4 py-3 text-sm rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">새 비밀번호</label>
+                        <input
+                          type="password"
+                          value={newPwd}
+                          onChange={(e) => setNewPwd(e.target.value)}
+                          placeholder="새 비밀번호"
+                          disabled={isAuthLoading}
+                          className="w-full px-4 py-3 text-sm rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1.5">새 비밀번호 확인</label>
+                        <input
+                          type="password"
+                          value={confirmPwd}
+                          onChange={(e) => setConfirmPwd(e.target.value)}
+                          placeholder="새 비밀번호 확인"
+                          disabled={isAuthLoading}
+                          className="w-full px-4 py-3 text-sm rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
+                        />
+                      </div>
                     </div>
                     <button
                       type="submit"
                       disabled={isAuthLoading}
-                      className="w-full py-2.5 bg-teal-600 text-white text-sm font-bold rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="px-6 py-2.5 bg-teal-600 text-white text-sm font-bold rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {isAuthLoading ? (
                         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -302,7 +356,10 @@ const MyPage: React.FC = () => {
             </div>
           </div>
         </Reveal>
+        )}
 
+        {/* Analysis History Tab */}
+        {activeTab === 'history' && (
         <Reveal delay={100}>
           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden min-h-[400px]">
             <div className="p-8 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -381,6 +438,7 @@ const MyPage: React.FC = () => {
             </div>
           </div>
         </Reveal>
+        )}
 
       </div>
     </section>
