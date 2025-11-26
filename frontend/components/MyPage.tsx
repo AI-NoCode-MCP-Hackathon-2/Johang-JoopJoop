@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { useAnalysisHistory, RiskLevel } from './AnalysisHistoryContext';
+import { RiskLevel } from './AnalysisHistoryContext';
 import Reveal from './Reveal';
-import { User, ShieldAlert, FileText, Clock, Trash2, LogIn, Save, Lock, AlertTriangle, UserX, AlertCircle, Settings, History } from 'lucide-react';
+import { User, ShieldAlert, FileText, Clock, Trash2, LogIn, Save, Lock, AlertTriangle, UserX, AlertCircle, Settings, History, X } from 'lucide-react';
+import api from '../utils/api';
 
 type TabType = 'account' | 'history';
 
+interface AnalysisRecord {
+  id: string;
+  user_id: string;
+  file_name: string;
+  title: string;
+  risk_level: 'low' | 'medium' | 'high';
+  created_at: string;
+}
+
 const MyPage: React.FC = () => {
   const { user, isAuthenticated, updateProfile, changePassword, deleteAccount, isAuthLoading } = useAuth();
-  const { records, clearRecordsForCurrentUser } = useAnalysisHistory();
 
   const [activeTab, setActiveTab] = useState<TabType>('history');
   const [profileName, setProfileName] = useState('');
@@ -20,12 +29,61 @@ const MyPage: React.FC = () => {
   const [confirmPwd, setConfirmPwd] = useState('');
   const [pwdMsg, setPwdMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+
+  // MySQL에서 분석 이력 불러오기
+  const [records, setRecords] = useState<AnalysisRecord[]>([]);
+  const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+
+  // 상세보기 모달 상태
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailData, setDetailData] = useState<any>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
   useEffect(() => {
     if (user) {
       setProfileName(user.name);
       setProfileEmail(user.email);
+      // MySQL에서 분석 이력 로드
+      loadAnalysisHistory();
     }
   }, [user]);
+
+  const loadAnalysisHistory = async () => {
+    if (!isAuthenticated) return;
+
+    setIsLoadingRecords(true);
+    try {
+      const { data } = await api.get('/analysis');
+      setRecords(data.data.analyses || []);
+    } catch (error) {
+      console.error('분석 이력 로드 실패:', error);
+    } finally {
+      setIsLoadingRecords(false);
+    }
+  };
+
+  const handleViewDetail = async (recordId: string) => {
+    setIsLoadingDetail(true);
+    setShowDetailModal(true);
+    setDetailData(null);
+
+    try {
+      const { data } = await api.get(`/analysis/${recordId}`);
+      setDetailData(data.data.analysis);
+    } catch (error) {
+      console.error('상세 정보 로드 실패:', error);
+      alert('상세 정보를 불러오는데 실패했습니다.');
+      setShowDetailModal(false);
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setDetailData(null);
+  };
 
   if (!isAuthenticated || !user) {
     return (
@@ -54,9 +112,21 @@ const MyPage: React.FC = () => {
     );
   }
 
-  const handleClearHistory = () => {
-    if (window.confirm("정말로 모든 분석 이력을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.")) {
-      clearRecordsForCurrentUser();
+  const handleClearHistory = async () => {
+    if (!window.confirm("정말로 모든 분석 이력을 삭제하시겠습니까?\n삭제된 데이터는 복구할 수 없습니다.")) {
+      return;
+    }
+
+    try {
+      // MySQL에서 각 이력 삭제
+      for (const record of records) {
+        await api.delete(`/analysis/${record.id}`);
+      }
+      setRecords([]);
+      alert('모든 분석 이력이 삭제되었습니다.');
+    } catch (error) {
+      console.error('분석 이력 삭제 실패:', error);
+      alert('분석 이력 삭제 중 오류가 발생했습니다.');
     }
   };
 
@@ -237,15 +307,15 @@ const MyPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1.5">이메일</label>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5">이메일 (변경 불가)</label>
                       <input
                         type="email"
                         value={profileEmail}
-                        onChange={(e) => setProfileEmail(e.target.value)}
-                        placeholder={user.email}
-                        disabled={isAuthLoading}
-                        className="w-full px-4 py-3 text-sm rounded-xl bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50"
+                        readOnly
+                        disabled
+                        className="w-full px-4 py-3 text-sm rounded-xl bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed"
                       />
+                      <p className="text-xs text-slate-400 mt-1">이메일은 계정 아이디이므로 변경할 수 없습니다.</p>
                     </div>
                   </div>
                   <button
@@ -400,8 +470,8 @@ const MyPage: React.FC = () => {
                     <div key={record.id} className="p-6 hover:bg-slate-50 transition-colors group flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-start gap-4">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-1 ${
-                          record.riskLevel === 'high' ? 'bg-red-50 text-red-500' :
-                          record.riskLevel === 'medium' ? 'bg-orange-50 text-orange-500' :
+                          record.risk_level === 'high' ? 'bg-red-50 text-red-500' :
+                          record.risk_level === 'medium' ? 'bg-orange-50 text-orange-500' :
                           'bg-green-50 text-green-500'
                         }`}>
                           <FileText className="w-5 h-5" />
@@ -411,24 +481,27 @@ const MyPage: React.FC = () => {
                             <h4 className="font-bold text-slate-900 text-lg group-hover:text-teal-700 transition-colors">
                               {record.title}
                             </h4>
-                            {getRiskBadge(record.riskLevel)}
+                            {getRiskBadge(record.risk_level)}
                           </div>
                           <div className="flex items-center gap-3 text-xs text-slate-500">
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {new Date(record.createdAt).toLocaleString()}
+                              {new Date(record.created_at).toLocaleString()}
                             </span>
-                            {record.fileName && (
+                            {record.file_name && (
                               <>
                                 <span className="w-0.5 h-0.5 bg-slate-400 rounded-full"></span>
-                                <span className="truncate max-w-[150px]">{record.fileName}</span>
+                                <span className="truncate max-w-[150px]">{record.file_name}</span>
                               </>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      <button className="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-sm font-bold rounded-xl hover:border-teal-300 hover:text-teal-600 transition-all opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0">
+                      <button
+                        onClick={() => handleViewDetail(record.id)}
+                        className="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-sm font-bold rounded-xl hover:border-teal-300 hover:text-teal-600 transition-all opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0"
+                      >
                         상세 보기
                       </button>
                     </div>
@@ -441,6 +514,84 @@ const MyPage: React.FC = () => {
         )}
 
       </div>
+
+      {/* 상세보기 모달 */}
+      {showDetailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between rounded-t-3xl">
+              <h3 className="text-xl font-bold text-slate-900">분석 결과 상세</h3>
+              <button
+                onClick={handleCloseDetailModal}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {isLoadingDetail ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="w-12 h-12 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin mb-4"></div>
+                  <p className="text-slate-600">데이터를 불러오는 중...</p>
+                </div>
+              ) : detailData ? (
+                <div className="space-y-6">
+                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 mb-1 block">파일명</label>
+                        <p className="text-slate-900 font-medium">{detailData.file_name || '정보 없음'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 mb-1 block">제목</label>
+                        <p className="text-slate-900 font-medium">{detailData.title || '정보 없음'}</p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 mb-1 block">위험도</label>
+                        <div>{getRiskBadge(detailData.risk_level)}</div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 mb-1 block">분석 일시</label>
+                        <p className="text-slate-900 font-medium text-sm">
+                          {new Date(detailData.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-6 border border-slate-200">
+                    <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-teal-600" />
+                      분석 결과
+                    </h4>
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                      <pre className="text-sm text-slate-700 whitespace-pre-wrap font-mono leading-relaxed">
+                        {typeof detailData.analysis_result === 'string'
+                          ? detailData.analysis_result
+                          : JSON.stringify(detailData.analysis_result, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      onClick={handleCloseDetailModal}
+                      className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-colors"
+                    >
+                      닫기
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-slate-600">데이터를 불러올 수 없습니다.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
