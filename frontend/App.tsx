@@ -45,8 +45,10 @@ const AppContent: FC = () => {
   // Hash-based routing: Read initial page from URL hash
   const getPageFromHash = (): Page => {
     const hash = window.location.hash.slice(1); // Remove '#'
+    // URL 쿼리 파라미터가 있을 경우 제거 (예: /check?analysisId=123 -> check)
+    const pagePath = hash.split('?')[0];
     const validPages: Page[] = ['home', 'why', 'how', 'features', 'faq', 'check', 'privacyPolicy', 'terms', 'contact', 'mypage', 'chatbot', 'experts', 'pricing', 'admin'];
-    return validPages.includes(hash as Page) ? (hash as Page) : 'home';
+    return validPages.includes(pagePath as Page) ? (pagePath as Page) : 'home';
   };
 
   const [currentPage, setCurrentPage] = useState<Page>(getPageFromHash());
