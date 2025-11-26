@@ -728,8 +728,7 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
                   borderRadius: '16px',
                   padding: '14px',
                   boxShadow: '0 20px 60px rgba(0, 0, 0, 0.35)',
-                  maxHeight: '800px',
-                  overflow: 'auto'
+                  minHeight: '400px'
                 }}>
                   {maskedText ? (
                     <TextHighlightViewer maskedText={maskedText} clauses={n8nClauses} />
