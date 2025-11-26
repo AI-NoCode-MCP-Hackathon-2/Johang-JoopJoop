@@ -176,6 +176,9 @@ export async function analyzeContractN8n(req: Request, res: Response, next: Next
 
     const { text, fileName } = req.body;
 
+    // text는 이미 프론트엔드에서 마스킹된 텍스트
+    const maskedText = text;
+
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
     if (!n8nWebhookUrl) {
       throw new AppError('n8n 웹훅 URL이 설정되지 않았습니다', 500);
@@ -184,9 +187,9 @@ export async function analyzeContractN8n(req: Request, res: Response, next: Next
     // n8n 웹훅 호출
     const n8nResponse = await axios.post(n8nWebhookUrl, {
       filename: fileName || '계약서',
-      text: text,
+      text: maskedText,
     }, {
-      timeout: 60000, // 60초 타임아웃
+      timeout: 1200000, // 20분 타임아웃
     });
 
     // 응답 파싱
@@ -229,10 +232,11 @@ export async function analyzeContractN8n(req: Request, res: Response, next: Next
       overall_score: overallRisk === 'high' ? 30 : overallRisk === 'medium' ? 60 : 85,
     };
 
-    // DB에 저장 (분석 결과만, 원문은 저장하지 않음)
+    // DB에 저장 (마스킹된 텍스트 포함)
     const analysis = await AnalysisHistoryModel.create({
       userId: req.user.userId,
       fileName: fileName || '계약서',
+      maskedText: maskedText,
       title: `${fileName || '계약서'} 분석 결과`,
       riskLevel: overallRisk,
       analysisResult: analysisResult,
@@ -247,6 +251,7 @@ export async function analyzeContractN8n(req: Request, res: Response, next: Next
       data: {
         analysis,
         clauses: parsed,
+        maskedText: maskedText,
       },
     });
   } catch (error: any) {

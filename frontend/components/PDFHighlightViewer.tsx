@@ -24,7 +24,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
     if (!textLayerDiv || !clausesToHighlight || clausesToHighlight.length === 0) return;
 
     const spans = Array.from(textLayerDiv.querySelectorAll('span'));
-    console.log(`🔍 하이라이트 시작 - span 개수: ${spans.length}, 조항 개수: ${clausesToHighlight.length}`);
+    console.log(`하이라이트 시작 - span 개수: ${spans.length}, 조항 개수: ${clausesToHighlight.length}`);
 
     // 1) 페이지 전체 문자열 + span 인덱스 테이블 만들기
     let pageTextNorm = '';
@@ -46,7 +46,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
     clausesToHighlight.forEach((clause, clauseIdx) => {
       const targetText = clause['조항'] || '';
       if (!targetText) {
-        console.log(`⚠️ 조항 #${clauseIdx + 1}: 텍스트 없음`);
+        console.log(`조항 #${clauseIdx + 1}: 텍스트 없음`);
         return;
       }
 
@@ -62,7 +62,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
       }
 
       if (!highlightClass) {
-        console.log(`⚠️ 조항 #${clauseIdx + 1}: 알 수 없는 위험도 '${riskKey}'`);
+        console.log(`조항 #${clauseIdx + 1}: 알 수 없는 위험도 '${riskKey}'`);
         return;
       }
 
@@ -107,7 +107,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
       }
     });
 
-    console.log(`\n✅ 하이라이트 완료: ${matchCount}/${clausesToHighlight.length}개 조항 매칭됨\n`);
+    console.log(`\n하이라이트 완료: ${matchCount}/${clausesToHighlight.length}개 조항 매칭됨\n`);
   };
 
   useEffect(() => {
@@ -124,8 +124,8 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
           cMapPacked: true,
         }).promise;
 
-        console.log('📊 사용 중인 분석 데이터:', clauses);
-        console.log('📋 위험 조항 수:', clauses.length);
+        console.log('사용 중인 분석 데이터:', clauses);
+        console.log('위험 조항 수:', clauses.length);
 
         const viewer = containerRef.current;
         viewer.innerHTML = '';
@@ -176,7 +176,7 @@ const PDFHighlightViewer: React.FC<PDFHighlightViewerProps> = ({ pdfFile, clause
 
         setPdfStatus(`✓ PDF ${pdf.numPages}페이지 로드 완료 (위험 조항 ${clauses.length}개)`);
       } catch (err: any) {
-        console.error('❌ PDF 렌더링 오류:', err);
+        console.error('PDF 렌더링 오류:', err);
         setPdfStatus(`불러오기 실패: ${err.message}`);
       }
     };

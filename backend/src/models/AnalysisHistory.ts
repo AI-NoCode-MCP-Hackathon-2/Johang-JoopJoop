@@ -7,6 +7,7 @@ export interface AnalysisHistory {
   id: string;
   user_id: string;
   file_name: string;
+  masked_text?: string;
   title: string;
   risk_level: 'low' | 'medium' | 'high';
   analysis_result: AnalysisResult;
@@ -16,6 +17,7 @@ export interface AnalysisHistory {
 export interface CreateAnalysisData {
   userId: string;
   fileName: string;
+  maskedText?: string;
   title: string;
   riskLevel: 'low' | 'medium' | 'high';
   analysisResult: AnalysisResult;
@@ -26,12 +28,13 @@ export class AnalysisHistoryModel {
     const id = uuidv4();
 
     const [result] = await pool.query<ResultSetHeader>(
-      `INSERT INTO analysis_history (id, user_id, file_name, title, risk_level, analysis_result)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO analysis_history (id, user_id, file_name, masked_text, title, risk_level, analysis_result)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.userId,
         data.fileName,
+        data.maskedText || null,
         data.title,
         data.riskLevel,
         JSON.stringify(data.analysisResult),

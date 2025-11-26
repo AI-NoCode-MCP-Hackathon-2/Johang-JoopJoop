@@ -5,7 +5,7 @@ import Loader from './Loader';
 import { useAuth } from './AuthContext';
 import { Page } from '../App';
 import { ClauseResult, RiskLevel } from './MockContractCard';
-import PDFHighlightViewer from './PDFHighlightViewer';
+import TextHighlightViewer from './TextHighlightViewer';
 import api from '../utils/api';
 import { maskSensitiveInfo } from '../utils/masking';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -94,34 +94,120 @@ const SAMPLE_CASES = [
 // PDF.js 워커 설정
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js`;
 
-// PDF 텍스트 추출 함수
+// 유효한 문자인지 확인하는 함수
+const isValidChar = (char: string): boolean => {
+  const code = char.charCodeAt(0);
+
+  // 제어문자 제외 (줄바꿈, 탭 제외)
+  if (code < 0x20 && char !== '\n' && char !== '\t') return false;
+
+  // Private Use Area (PUA) 제외 - 깨진 문자의 주범
+  if (code >= 0xE000 && code <= 0xF8FF) return false;
+
+  return (
+    // 기본 ASCII
+    (code >= 0x20 && code <= 0x007E) ||
+    // 일반 구두점/기호 (전각 등)
+    (code >= 0x2000 && code <= 0x206F) ||
+    // 한글 자모 (U+1100~U+11FF, U+3130~318F)
+    (code >= 0x1100 && code <= 0x11FF) ||
+    (code >= 0x3130 && code <= 0x318F) ||
+    // 한글 음절
+    (code >= 0xAC00 && code <= 0xD7AF) ||
+    // 공백류
+    char === '\n' || char === '\t' || char === ' '
+  );
+};
+
+// PDF 텍스트 추출 함수 (개선된 설정 + 확장된 필터)
 const extractTextFromPDF = async (file: File): Promise<string> => {
   const buffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({
     data: buffer,
-    cMapUrl: `https://unpkg.com/pdfjs-dist@3.11.174/cmaps/`,
+    cMapUrl: `${window.location.origin}/pdfjs/cmaps/`,
     cMapPacked: true,
+    standardFontDataUrl: `${window.location.origin}/pdfjs/standard_fonts/`,
   }).promise;
 
   let fullText = '';
+  let filteredCount = 0;
+  let totalChars = 0;
+
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
-    fullText += textContent.items.map((item: any) => item.str).join(' ') + '\n';
+
+    let lastY = -1;
+    let lineText = '';
+
+    textContent.items.forEach((item: any) => {
+      const currentY = item.transform[5];
+      const original = item.str;
+      totalChars += original.length;
+
+      // 개선된 필터: 확장된 유니코드 범위 허용
+      const filtered = original.split('').filter(isValidChar).join('');
+
+      const removedCount = original.length - filtered.length;
+      filteredCount += removedCount;
+
+      // 디버깅: 필터링된 텍스트 로그
+      if (!filtered.trim() && original.trim()) {
+        console.debug(
+          'Filtered out text:',
+          JSON.stringify(original),
+          'charCodes:',
+          original.split('').map((c: string) => '0x' + c.charCodeAt(0).toString(16))
+        );
+      }
+
+      if (!filtered.trim()) return;
+
+      // 쓰레기 데이터 필터링: 원본의 80% 이상이 필터링되고 남은 텍스트가 3자 이하면 제거
+      if (original.length >= 5 && removedCount >= original.length * 0.8 && filtered.length <= 3) {
+        console.debug(`쓰레기 데이터로 판단하여 제거: "${filtered}"`);
+        filteredCount += filtered.length; // 남은 문자도 필터링 카운트에 추가
+        return;
+      }
+
+      // Y 좌표가 많이 바뀌면 줄바꿈
+      if (lastY !== -1 && Math.abs(currentY - lastY) > 5) {
+        fullText += lineText.trim() + '\n';
+        lineText = '';
+      }
+
+      lineText += filtered + ' ';
+      lastY = currentY;
+    });
+
+    if (lineText.trim()) {
+      fullText += lineText.trim() + '\n';
+    }
+    fullText += '\n';
   }
-  return fullText;
+
+  // 필터링 비율 계산
+  const filterRatio = totalChars > 0 ? (filteredCount / totalChars) * 100 : 0;
+
+  if (filteredCount > 0) {
+    console.warn(`${filteredCount}개 문자 필터링됨 (PDF 인코딩 문제, ${filterRatio.toFixed(1)}%)`);
+  }
+
+  // 필터링 비율이 30% 이상이면 경고
+  if (filterRatio > 30) {
+    console.error('PDF 텍스트 인코딩이 심각하게 손상되었습니다. OCR이 필요할 수 있습니다.');
+  }
+
+  return fullText.trim();
 };
 
 interface N8nClauseData {
-  '조항 번호'?: string;
-  '조항 제목'?: string;
-  '조항': string;
-  '위험도 색상': string;
-  '설명': string;
-  rank?: number;
+  clause: string;
   name?: string;
-  clause?: string;
-  risk?: string;
+  rank?: number;
+  risk: string;
+  easyTranslation?: string;
+  summary?: string[];
 }
 
 const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
@@ -132,6 +218,7 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [n8nClauses, setN8nClauses] = useState<N8nClauseData[]>([]);
   const [loadedAnalysisId, setLoadedAnalysisId] = useState<string | null>(null);
+  const [maskedText, setMaskedText] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { user, isAuthenticated, canUseCheck, refreshUser } = useAuth();
@@ -144,13 +231,41 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
       const params = new URLSearchParams(window.location.hash.split('?')[1]);
       const analysisId = params.get('analysisId');
 
+      // analysisId가 없으면 상태 초기화 (새 분석 모드)
+      if (!analysisId) {
+        setLoadedAnalysisId(null);
+        setMaskedText('');
+        setResults([]);
+        setN8nClauses([]);
+        setShowResults(false);
+        setSelectedFile(null);
+        setContractText('');
+        return;
+      }
+
       if (analysisId && analysisId !== loadedAnalysisId) {
         setIsLoading(true);
         try {
           const { data } = await api.get(`/analysis/${analysisId}`);
           const analysis = data.data.analysis;
 
+          console.log('분석 데이터 로드:', {
+            id: analysis.id,
+            file_name: analysis.file_name,
+            has_masked_text: !!analysis.masked_text,
+            masked_text_length: analysis.masked_text?.length || 0,
+            risks_count: analysis.analysis_result?.risks?.length || 0,
+          });
+
           setLoadedAnalysisId(analysisId);
+
+          // 마스킹된 텍스트 복원
+          if (analysis.masked_text) {
+            console.log('maskedText 설정:', analysis.masked_text.substring(0, 100) + '...');
+            setMaskedText(analysis.masked_text);
+          } else {
+            console.warn('masked_text가 없습니다. 레거시 데이터일 수 있습니다.');
+          }
 
           // analysis_result에서 조항 정보 추출 (모든 정보 포함)
           const analysisResult = analysis.analysis_result;
@@ -166,6 +281,17 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
               isKeyClause: risk.severity === 'high' || risk.severity === 'medium',
             }));
 
+            // n8nClauses 데이터 복원
+            const n8nClauseData: N8nClauseData[] = analysisResult.risks.map((risk: any) => ({
+              clause: risk.originalClause || risk.issue || '',
+              name: risk.category || '',
+              rank: risk.rank || 0,
+              risk: risk.severity === 'high' ? 'RED' : risk.severity === 'medium' ? 'ORANGE' : 'YELLOW',
+              easyTranslation: risk.recommendation || '',
+              summary: risk.summary || [],
+            }));
+
+            setN8nClauses(n8nClauseData);
             setResults(convertedResults);
             setShowResults(true);
           }
@@ -179,7 +305,7 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
     };
 
     loadAnalysisFromUrl();
-  }, [loadedAnalysisId]);
+  }, [window.location.hash]);
 
   // 파일 선택 핸들러
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,6 +318,8 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
     if (file.type === 'application/pdf') {
       try {
         const text = await extractTextFromPDF(file);
+        console.log('PDF 텍스트 추출 완료:', text.substring(0, 200) + '...');
+        console.log('총 길이:', text.length, '문자');
         setContractText(text);
       } catch (error) {
         alert('PDF 파일을 읽는 중 오류가 발생했습니다.');
@@ -200,6 +328,7 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
     } else if (file.type === 'text/plain') {
       // TXT 파일인 경우
       const text = await file.text();
+      console.log('TXT 파일 읽기 완료:', text.substring(0, 200) + '...');
       setContractText(text);
     }
   };
@@ -224,6 +353,12 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
       return;
     }
 
+    console.log('분석 버튼 클릭 - contractText 상태:', {
+      length: contractText.length,
+      isEmpty: !contractText.trim(),
+      preview: contractText.substring(0, 100)
+    });
+
     if (!contractText.trim()) {
       alert("계약서 내용을 입력해주세요.");
       return;
@@ -233,25 +368,30 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
 
     try {
       // 마스킹 적용 (민감정보 제거)
-      const maskedText = maskSensitiveInfo(contractText);
+      const maskedTextValue = maskSensitiveInfo(contractText);
       const fileName = selectedFile?.name || '계약서';
 
       // n8n 웹훅을 통한 분석
       const { data } = await api.post('/analysis/analyze-n8n', {
-        text: maskedText,
+        text: maskedTextValue,
         fileName: fileName,
       });
 
       // n8n 응답 처리
       const clauses = data.data.clauses || [];
+      const returnedMaskedText = data.data.maskedText || maskedTextValue;
 
-      // n8n 원본 데이터를 PDF 하이라이트용으로 변환
+      // 마스킹된 텍스트 저장
+      setMaskedText(returnedMaskedText);
+
+      // n8n 원본 데이터를 TextHighlightViewer용으로 변환
       const n8nClauseData: N8nClauseData[] = clauses.map((c: any) => ({
-        '조항 번호': c.rank || '',
-        '조항 제목': c.name || '',
-        '조항': c.clause || '',
-        '위험도 색상': (c.risk || '').toUpperCase(),
-        '설명': c.reason || '',
+        clause: c.clause || '',
+        name: c.name || '',
+        rank: c.rank || 0,
+        risk: (c.risk || '').toUpperCase(),
+        easyTranslation: c.easyTranslation || '',
+        summary: c.summary || [],
       }));
 
       // ClauseResult 형식으로도 변환 (사이드바 표시용)
@@ -581,16 +721,38 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
 
               {/* Main Layout: PDF + Clause List (n8n.html 방식) */}
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', alignItems: 'start' }}>
-                {/* PDF Viewer (Left - 2fr) */}
+                {/* Text Viewer (Left - 2fr) */}
                 <section style={{
                   background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01))',
                   border: '1px solid rgba(31, 41, 55, 1)',
                   borderRadius: '16px',
                   padding: '14px',
-                  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.35)'
+                  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.35)',
+                  maxHeight: '800px',
+                  overflow: 'hidden'
                 }}>
-                  {selectedFile && (
-                    <PDFHighlightViewer pdfFile={selectedFile} clauses={n8nClauses} />
+                  {maskedText ? (
+                    <TextHighlightViewer maskedText={maskedText} clauses={n8nClauses} />
+                  ) : (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '400px',
+                      padding: '24px',
+                      textAlign: 'center'
+                    }}>
+                      <FileText className="w-12 h-12 text-slate-500 mb-4" />
+                      <h4 style={{ color: '#94a3b8', fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
+                        텍스트 하이라이트를 사용할 수 없습니다
+                      </h4>
+                      <p style={{ color: '#64748b', fontSize: '13px', lineHeight: '1.6', maxWidth: '400px' }}>
+                        이 분석 결과는 구버전에서 저장되어 원본 텍스트가 없습니다.<br/>
+                        우측의 조항 카드를 통해 분석 내용을 확인하실 수 있습니다.<br/><br/>
+                        새로운 분석을 진행하시면 텍스트 하이라이트 기능을 사용하실 수 있습니다.
+                      </p>
+                    </div>
                   )}
                 </section>
 
