@@ -131,11 +131,55 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
   const [contractText, setContractText] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [n8nClauses, setN8nClauses] = useState<N8nClauseData[]>([]);
+  const [loadedAnalysisId, setLoadedAnalysisId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { user, isAuthenticated, canUseCheck, refreshUser } = useAuth();
 
   const isLimitReached = isAuthenticated && !canUseCheck();
+
+  // URL에서 analysisId 파라미터 읽어서 저장된 분석 결과 로드
+  useEffect(() => {
+    const loadAnalysisFromUrl = async () => {
+      const params = new URLSearchParams(window.location.hash.split('?')[1]);
+      const analysisId = params.get('analysisId');
+
+      if (analysisId && analysisId !== loadedAnalysisId) {
+        setIsLoading(true);
+        try {
+          const { data } = await api.get(`/analysis/${analysisId}`);
+          const analysis = data.data.analysis;
+
+          setLoadedAnalysisId(analysisId);
+
+          // analysis_result에서 조항 정보 추출
+          const analysisResult = analysis.analysis_result;
+          if (analysisResult && analysisResult.risks) {
+            const convertedResults: ClauseResult[] = analysisResult.risks.map((risk: any, idx: number) => ({
+              id: `clause-${idx + 1}`,
+              title: risk.category || '조항',
+              originalText: risk.issue || '',
+              easyExplanation: risk.recommendation || '',
+              summaryBullets: [],
+              riskLevel: (risk.severity === 'high' ? 'RED' : risk.severity === 'medium' ? 'ORANGE' : 'YELLOW') as RiskLevel,
+              tags: [risk.category || '일반'],
+              isKeyClause: risk.severity === 'high' || risk.severity === 'medium',
+            }));
+
+            setResults(convertedResults);
+            setShowResults(true);
+          }
+        } catch (error) {
+          console.error('분석 결과 로드 실패:', error);
+          alert('분석 결과를 불러오는데 실패했습니다.');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadAnalysisFromUrl();
+  }, [loadedAnalysisId]);
 
   // 파일 선택 핸들러
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
