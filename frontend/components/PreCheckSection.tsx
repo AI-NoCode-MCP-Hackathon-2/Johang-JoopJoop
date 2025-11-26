@@ -342,53 +342,48 @@ const PreCheckSection: React.FC<PreCheckSectionProps> = ({ onNavigate }) => {
                   </div>
 
                   <div className="mb-6">
-                    <label className="block text-sm font-bold text-slate-700 mb-2">계약서 내용 입력</label>
-                    <textarea
-                      disabled={!isAuthenticated || isLimitReached}
-                      value={contractText}
-                      onChange={(e) => setContractText(e.target.value)}
-                      placeholder="계약서 내용을 여기에 복사하여 붙여넣기 해주세요..."
-                      className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-shadow disabled:opacity-50 min-h-[200px]"
-                    />
-                  </div>
-
-                  <div className={`border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:bg-slate-50 hover:border-teal-400 transition-all mb-6 ${(!isAuthenticated || isLimitReached) ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf,.txt"
-                      onChange={handleFileSelect}
-                      disabled={!isAuthenticated || isLimitReached}
-                      className="hidden"
-                      id="contract-file-input"
-                    />
-                    {selectedFile ? (
-                      <div className="flex items-center justify-center gap-3">
-                        <FileText className="w-8 h-8 text-teal-600" />
-                        <div className="text-left">
-                          <p className="text-sm font-medium text-slate-700">{selectedFile.name}</p>
-                          <p className="text-xs text-slate-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">계약서 파일 업로드</label>
+                    <div className={`border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center hover:bg-slate-50 hover:border-teal-400 transition-all ${(!isAuthenticated || isLimitReached) ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.txt"
+                        onChange={handleFileSelect}
+                        disabled={!isAuthenticated || isLimitReached}
+                        className="hidden"
+                        id="contract-file-input"
+                      />
+                      {selectedFile ? (
+                        <div className="flex flex-col items-center gap-4">
+                          <div className="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center">
+                            <FileText className="w-8 h-8 text-teal-600" />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-base font-semibold text-slate-700">{selectedFile.name}</p>
+                            <p className="text-sm text-slate-500 mt-1">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                          </div>
+                          <button
+                            onClick={handleRemoveFile}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors text-slate-600"
+                          >
+                            <X className="w-4 h-4" />
+                            <span className="text-sm font-medium">파일 제거</span>
+                          </button>
                         </div>
-                        <button
-                          onClick={handleRemoveFile}
-                          className="ml-2 p-1 hover:bg-slate-200 rounded-full transition-colors"
-                        >
-                          <X className="w-5 h-5 text-slate-500" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label htmlFor="contract-file-input" className="cursor-pointer">
-                        <div className="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <Upload className="w-6 h-6 text-teal-600" />
-                        </div>
-                        <p className="text-slate-600 text-sm">
-                          PDF 또는 TXT 파일을 업로드하세요
-                        </p>
-                        <p className="text-slate-400 text-xs mt-1">
-                          클릭하여 파일 선택
-                        </p>
-                      </label>
-                    )}
+                      ) : (
+                        <label htmlFor="contract-file-input" className="cursor-pointer">
+                          <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Upload className="w-8 h-8 text-teal-600" />
+                          </div>
+                          <p className="text-slate-700 font-semibold text-base mb-2">
+                            PDF 또는 TXT 파일을 업로드하세요
+                          </p>
+                          <p className="text-slate-500 text-sm">
+                            클릭하여 파일 선택
+                          </p>
+                        </label>
+                      )}
+                    </div>
                   </div>
 
                   <p className="text-xs text-slate-400 text-center flex items-center justify-center gap-1">

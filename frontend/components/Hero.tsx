@@ -58,9 +58,8 @@ const Hero: React.FC<HeroProps> = ({ onNavigate, onRequestPreCheck }) => {
                   <svg className="absolute w-full h-3 -bottom-1 left-0 text-teal-200/50 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none">
                     <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
                   </svg>
-                </span>부터
+                </span>부터 먼저
               </span>
-              <span className="block">먼저</span>
               <span className="block">찾아드립니다.</span>
             </h1>
 
