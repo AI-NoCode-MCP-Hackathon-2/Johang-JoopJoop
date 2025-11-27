@@ -92,11 +92,15 @@ async function startServer() {
   try {
     logger.info('서버 시작 중...');
 
-    await testConnection();
-    logger.info('데이터베이스 연결 확인 완료');
+    try {
+      await testConnection();
+      logger.info('데이터베이스 연결 확인 완료');
 
-    await initializeDatabase();
-    logger.info('데이터베이스 초기화 완료');
+      await initializeDatabase();
+      logger.info('데이터베이스 초기화 완료');
+    } catch (dbError) {
+      logger.warn('데이터베이스 연결 실패 - DB 기능 없이 서버를 시작합니다:', dbError);
+    }
 
     app.listen(PORT, () => {
       logger.info(`서버가 포트 ${PORT}에서 실행 중입니다`);
