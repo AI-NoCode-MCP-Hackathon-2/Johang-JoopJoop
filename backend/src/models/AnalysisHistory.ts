@@ -1,4 +1,3 @@
-import { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import pool from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import { AnalysisResult } from '../services/geminiService';
@@ -27,9 +26,10 @@ export class AnalysisHistoryModel {
   static async create(data: CreateAnalysisData): Promise<AnalysisHistory> {
     const id = uuidv4();
 
-    const [result] = await pool.query<ResultSetHeader>(
+    const result = await pool.query(
       `INSERT INTO analysis_history (id, user_id, file_name, masked_text, title, risk_level, analysis_result)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
       [
         id,
         data.userId,
@@ -41,29 +41,31 @@ export class AnalysisHistoryModel {
       ]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.rows.length === 0) {
       throw new Error('분석 이력 저장에 실패했습니다');
     }
 
-    const analysis = await this.findById(id);
-    if (!analysis) {
-      throw new Error('저장된 분석 이력을 찾을 수 없습니다');
-    }
-
-    return analysis;
+    const row = result.rows[0];
+    return {
+      ...row,
+      analysis_result:
+        typeof row.analysis_result === 'string'
+          ? JSON.parse(row.analysis_result)
+          : row.analysis_result,
+    };
   }
 
   static async findById(id: string): Promise<AnalysisHistory | null> {
-    const [rows] = await pool.query<(AnalysisHistory & RowDataPacket)[]>(
-      'SELECT * FROM analysis_history WHERE id = ?',
+    const result = await pool.query(
+      'SELECT * FROM analysis_history WHERE id = $1',
       [id]
     );
 
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return null;
     }
 
-    const row = rows[0];
+    const row = result.rows[0];
     return {
       ...row,
       analysis_result:
@@ -78,15 +80,15 @@ export class AnalysisHistoryModel {
     limit: number = 10,
     offset: number = 0
   ): Promise<AnalysisHistory[]> {
-    const [rows] = await pool.query<(AnalysisHistory & RowDataPacket)[]>(
+    const result = await pool.query(
       `SELECT * FROM analysis_history
-       WHERE user_id = ?
+       WHERE user_id = $1
        ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
+       LIMIT $2 OFFSET $3`,
       [userId, limit, offset]
     );
 
-    return rows.map((row) => ({
+    return result.rows.map((row: any) => ({
       ...row,
       analysis_result:
         typeof row.analysis_result === 'string'
@@ -96,33 +98,33 @@ export class AnalysisHistoryModel {
   }
 
   static async countByUserId(userId: string): Promise<number> {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) as count FROM analysis_history WHERE user_id = ?',
+    const result = await pool.query(
+      'SELECT COUNT(*)::int as count FROM analysis_history WHERE user_id = $1',
       [userId]
     );
-    return rows[0].count;
+    return result.rows[0].count;
   }
 
   static async delete(id: string, userId: string): Promise<void> {
-    const [result] = await pool.query<ResultSetHeader>(
-      'DELETE FROM analysis_history WHERE id = ? AND user_id = ?',
+    const result = await pool.query(
+      'DELETE FROM analysis_history WHERE id = $1 AND user_id = $2',
       [id, userId]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.rowCount === 0) {
       throw new Error('분석 이력 삭제에 실패했습니다');
     }
   }
 
   static async getAllRecent(limit: number = 10): Promise<AnalysisHistory[]> {
-    const [rows] = await pool.query<(AnalysisHistory & RowDataPacket)[]>(
+    const result = await pool.query(
       `SELECT * FROM analysis_history
        ORDER BY created_at DESC
-       LIMIT ?`,
+       LIMIT $1`,
       [limit]
     );
 
-    return rows.map((row) => ({
+    return result.rows.map((row: any) => ({
       ...row,
       analysis_result:
         typeof row.analysis_result === 'string'
@@ -136,14 +138,14 @@ export class AnalysisHistoryModel {
     medium: number;
     high: number;
   }> {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT risk_level, COUNT(*) as count
+    const result = await pool.query(
+      `SELECT risk_level, COUNT(*)::int as count
        FROM analysis_history
        GROUP BY risk_level`
     );
 
     const stats = { low: 0, medium: 0, high: 0 };
-    rows.forEach((row) => {
+    result.rows.forEach((row: any) => {
       stats[row.risk_level as 'low' | 'medium' | 'high'] = row.count;
     });
 
