@@ -1,5 +1,4 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { RowDataPacket } from 'mysql2/promise';
 import pool from '../config/database';
 import { authenticate, requireAdmin } from '../middleware/auth';
 import { ContactMessageModel } from '../models/ContactMessage';
@@ -14,23 +13,23 @@ router.use(requireAdmin);
 router.get('/stats', async (_req: Request, res: Response, next: NextFunction) => {
   try {
     // 전체 사용자 수
-    const [userCount] = await pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) as count FROM users'
+    const userCountResult = await pool.query(
+      'SELECT COUNT(*)::int as count FROM users'
     );
 
     // 오늘 가입한 사용자 수
-    const [newUsersToday] = await pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) as count FROM users WHERE DATE(created_at) = CURDATE()'
+    const newUsersTodayResult = await pool.query(
+      'SELECT COUNT(*)::int as count FROM users WHERE DATE(created_at) = CURRENT_DATE'
     );
 
     // 전체 분석 수
-    const [analysisCount] = await pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) as count FROM analysis_history'
+    const analysisCountResult = await pool.query(
+      'SELECT COUNT(*)::int as count FROM analysis_history'
     );
 
     // 오늘 분석 수
-    const [analysesToday] = await pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) as count FROM analysis_history WHERE DATE(created_at) = CURDATE()'
+    const analysesTodayResult = await pool.query(
+      'SELECT COUNT(*)::int as count FROM analysis_history WHERE DATE(created_at) = CURRENT_DATE'
     );
 
     // 열린 문의 수
@@ -39,10 +38,10 @@ router.get('/stats', async (_req: Request, res: Response, next: NextFunction) =>
     res.json({
       success: true,
       data: {
-        totalUsers: userCount[0].count,
-        newUsersToday: newUsersToday[0].count,
-        totalAnalyses: analysisCount[0].count,
-        analysesToday: analysesToday[0].count,
+        totalUsers: userCountResult.rows[0].count,
+        newUsersToday: newUsersTodayResult.rows[0].count,
+        totalAnalyses: analysisCountResult.rows[0].count,
+        analysesToday: analysesTodayResult.rows[0].count,
         openReports,
       },
     });
@@ -57,23 +56,23 @@ router.get('/users', async (req: Request, res: Response, next: NextFunction) => 
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = parseInt(req.query.offset as string) || 0;
 
-    const [users] = await pool.query<RowDataPacket[]>(
+    const usersResult = await pool.query(
       `SELECT id, name, email, role, provider, remaining_checks_today, created_at
        FROM users
        ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
+       LIMIT $1 OFFSET $2`,
       [limit, offset]
     );
 
-    const [totalCount] = await pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) as count FROM users'
+    const totalCountResult = await pool.query(
+      'SELECT COUNT(*)::int as count FROM users'
     );
 
     res.json({
       success: true,
       data: {
-        users,
-        total: totalCount[0].count,
+        users: usersResult.rows,
+        total: totalCountResult.rows[0].count,
         limit,
         offset,
       },
@@ -89,17 +88,17 @@ router.get('/analyses', async (req: Request, res: Response, next: NextFunction) 
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = parseInt(req.query.offset as string) || 0;
 
-    const [analyses] = await pool.query<RowDataPacket[]>(
+    const analysesResult = await pool.query(
       `SELECT ah.id, ah.user_id, ah.file_name, ah.title, ah.risk_level, ah.created_at, u.name as user_name
        FROM analysis_history ah
        LEFT JOIN users u ON ah.user_id = u.id
        ORDER BY ah.created_at DESC
-       LIMIT ? OFFSET ?`,
+       LIMIT $1 OFFSET $2`,
       [limit, offset]
     );
 
-    const [totalCount] = await pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) as count FROM analysis_history'
+    const totalCountResult = await pool.query(
+      'SELECT COUNT(*)::int as count FROM analysis_history'
     );
 
     // 위험도별 통계
@@ -108,8 +107,8 @@ router.get('/analyses', async (req: Request, res: Response, next: NextFunction) 
     res.json({
       success: true,
       data: {
-        analyses,
-        total: totalCount[0].count,
+        analyses: analysesResult.rows,
+        total: totalCountResult.rows[0].count,
         riskStats,
         limit,
         offset,
