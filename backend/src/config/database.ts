@@ -3,9 +3,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const isExternalConnection = process.env.DATABASE_URL?.includes('.render.com');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  ssl: isExternalConnection ? { rejectUnauthorized: false } : false,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
 export async function testConnection(): Promise<void> {
