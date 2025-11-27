@@ -3,11 +3,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const isExternalConnection = process.env.DATABASE_URL?.includes('.render.com');
-
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: isExternalConnection ? { rejectUnauthorized: false } : false,
+  ssl: { rejectUnauthorized: false },
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
